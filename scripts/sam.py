@@ -21,8 +21,8 @@ except ImportError:
 
 
 model_cache = OrderedDict()
-sam_model_dir = os.path.join(extensions_dir, "sd-webui-segment-everything/models/segment-everything")
-model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f))]
+sam_model_dir = os.path.join(extensions_dir, "sd-webui-segment-anything/models/sam")
+model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
 
 
 refresh_symbol = '\U0001f504'       # 🔄
@@ -65,7 +65,7 @@ def clear_sam_cache():
 
 def refresh_sam_models(*inputs):
     global model_list
-    model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f))]
+    model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
     dd = inputs[0]
     if dd in model_list:
         selected = dd
@@ -89,7 +89,7 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
         sam = model_cache[model_name]
     else:
         Exception(
-            f"{model_name} not found, please download model to models/segment-everything.")
+            f"{model_name} not found, please download model to models/sam.")
     predictor = SamPredictor(sam)
     print(f"Running SAM Inference {image_np_rgb.shape}")
     predictor.set_image(image_np_rgb)
@@ -115,7 +115,7 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
 class Script(scripts.Script):
 
     def title(self):
-        return 'Segment Everything'
+        return 'Segment Anything'
 
     def show(self, is_img2img):
         # TODO: Here I bypassed a bug inside module.img2img line 154, should be scripts_img2img instead.
@@ -124,24 +124,25 @@ class Script(scripts.Script):
 
     def ui(self, is_img2img):
         # if is_img2img:
-        with gr.Accordion('Segment Everything', open=False, elem_id=id('accordion')):
+        with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion')):
             with gr.Column():
-                gr.HTML(value="<p>Left click the image to add one positive point. Right click the image to add one negative point. Left click the point to remove it.</p>", label="Positive points")
+                gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>", label="Positive points")
                 with gr.Row():
                     model_name = gr.Dropdown(label="Model", elem_id="sam_model", choices=model_list,
                                              value=model_list[0] if len(model_list) > 0 else None)
                     refresh_models = ToolButton(value=refresh_symbol)
                     refresh_models.click(
                         refresh_sam_models, model_name, model_name)
-                input_image = gr.Image(label="Image for Segment Everything", elem_id="sam_input_image",
+                input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
                                        show_label=False, source="upload", type="pil", image_mode="RGBA")
                 dummy_component = gr.Label(visible=False)
                 mask_image = gr.Gallery(
-                    label='Segment Everything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
-                run_button = gr.Button(value="Preview Segmentation")
+                    label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
+                run_button = gr.Button(value="Preview Segmentation", visible=False, elem_id="sam_run_button")
+                gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
                 with gr.Row():
                     enabled = gr.Checkbox(
-                        value=False, label="Copy to Inpaint Upload")
+                        value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
                     chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=[
                                            "0", "1", "2"], type="index")
 

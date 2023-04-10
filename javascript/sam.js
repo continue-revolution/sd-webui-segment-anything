@@ -16,6 +16,16 @@ function getRealCoordinate(image, x1, y1) {
     }
 }
 
+function displayRunButton() {
+    gradioApp().getElementById("sam_no_button").style.display = "none"
+    gradioApp().getElementById("sam_run_button").style.display = "block"
+}
+
+function displayNoButton() {
+    gradioApp().getElementById("sam_run_button").style.display = "none"
+    gradioApp().getElementById("sam_no_button").style.display = "block"
+}
+
 function createDot(sam_image, image, coord, label) {
     const x = coord.x;
     const y = coord.y;
@@ -35,7 +45,12 @@ function createDot(sam_image, image, coord, label) {
         circle.addEventListener("click", e => {
             e.stopPropagation();
             circle.remove();
+            if (gradioApp().getElementsByClassName("sam_positive").length == 0 &&
+                gradioApp().getElementsByClassName("sam_negative").length == 0) {
+                displayNoButton();
+            }
         });
+        displayRunButton()
     }
 }
 
@@ -47,6 +62,7 @@ function removeDots(parentDiv) {
             dot.remove();
         });
     })
+    displayNoButton()
 }
 
 function create_submit_sam_args(args) {

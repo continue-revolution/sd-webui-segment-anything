@@ -1,6 +1,6 @@
-# Segment Everything for Stable Diffusion Webui
+# Segment Anything for Stable Diffusion Webui
 
-This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment everything](https://github.com/facebookresearch/segment-anything/) to do stable diffusion inpainting.
+This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) to do stable diffusion inpainting.
 
 ## How to use
 
@@ -10,7 +10,7 @@ Download this extension to `${sd-webui}/extensions` use whatever way you like (g
 
 ### Step 2:
 
-Download segment-everything model from [here](https://github.com/facebookresearch/segment-anything#model-checkpoints) to `${sd-webui-segment-everything}/models/segment-everything`
+Download segment-anything model from [here](https://github.com/facebookresearch/segment-anything#model-checkpoints) to `${sd-webui-segment-anything}/models/sam`
 
 ### Step 3:
 
