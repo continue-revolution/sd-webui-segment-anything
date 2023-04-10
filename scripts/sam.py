@@ -6,17 +6,16 @@ import torch
 import gradio as gr
 from collections import OrderedDict
 from modules import scripts
+from launch import run_pip
 from modules.paths_internal import extensions_dir
 from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc
 
-import subprocess
-
 try:
     from segment_anything import SamPredictor, build_sam
 except ImportError:
-    subprocess.run(['python3', '-m', 'pip', 'install', 'segment_anything'])
+    run_pip("install segment_anything", "segment_anything")
     from segment_anything import SamPredictor, build_sam
 
 
