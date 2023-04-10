@@ -20,8 +20,10 @@ except ImportError:
 
 
 model_cache = OrderedDict()
-sam_model_dir = os.path.join(extensions_dir, "sd-webui-segment-anything/models/sam")
-model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
+sam_model_dir = os.path.join(
+    extensions_dir, "sd-webui-segment-anything/models/sam")
+model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
+    os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
 
 
 refresh_symbol = '\U0001f504'       # 🔄
@@ -64,7 +66,8 @@ def clear_sam_cache():
 
 def refresh_sam_models(*inputs):
     global model_list
-    model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
+    model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
+        os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
     dd = inputs[0]
     if dd in model_list:
         selected = dd
@@ -91,7 +94,7 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
     else:
         Exception(
             f"{model_name} not found, please download model to models/sam.")
-    
+
     predictor = SamPredictor(sam)
     print(f"Running SAM Inference {image_np_rgb.shape}")
     predictor.set_image(image_np_rgb)
@@ -105,6 +108,8 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
     )
     if shared.cmd_opts.lowvram:
         sam.to(cpu)
+    gc.collect()
+    torch_gc()
     print("Creating output image")
     masks_gallery = []
     mask_images = []
@@ -142,8 +147,10 @@ class Script(scripts.Script):
                 dummy_component = gr.Label(visible=False)
                 mask_image = gr.Gallery(
                     label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
-                run_button = gr.Button(value="Preview Segmentation", visible=False, elem_id="sam_run_button")
-                gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
+                run_button = gr.Button(
+                    value="Preview Segmentation", visible=False, elem_id="sam_run_button")
+                gr.Button(
+                    value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
                 with gr.Row():
                     enabled = gr.Checkbox(
                         value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
