@@ -22,7 +22,7 @@ Download segment-everything model from [here](https://github.com/facebookresearc
 
 ### Demo
 
-
+https://user-images.githubusercontent.com/63914308/230916163-af661008-5a50-496e-8b79-8be7f193f9e9.mp4
 
 ## Future Plan
 
