@@ -7,7 +7,6 @@ import gradio as gr
 from collections import OrderedDict
 from modules import scripts, shared
 from launch import run_pip
-from modules.paths_internal import extensions_dir
 from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc, cpu
@@ -20,8 +19,7 @@ except ImportError:
 
 
 model_cache = OrderedDict()
-sam_model_dir = os.path.join(
-    extensions_dir, "sd-webui-segment-anything/models/sam")
+sam_model_dir = os.path.join(scripts.basedir(), "models", "sam")
 model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
     os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
 
