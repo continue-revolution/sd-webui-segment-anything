@@ -63,17 +63,16 @@ def clear_sam_cache():
     torch_gc()
 
 
-def refresh_sam_models(*inputs):
+def refresh_sam_models(dd):
     global model_list
     model_list = glob.glob("*.pth", root_dir=sam_model_dir)
-    dd = inputs[0]
     if dd in model_list:
         selected = dd
-    elif len(model_list) > 0:
+    elif model_list:
         selected = model_list[0]
     else:
         selected = None
-    return gr.Dropdown.update(choices=model_list, value=selected)
+    return gr.update(choices=model_list, value=selected)
 
 
 def sam_predict(model_name, input_image, positive_points, negative_points):
@@ -135,11 +134,9 @@ class Script(scripts.Script):
             with gr.Column():
                 gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>", label="Positive points")
                 with gr.Row():
-                    model_name = gr.Dropdown(label="Model", elem_id="sam_model", choices=model_list,
-                                             value=model_list[0] if len(model_list) > 0 else None)
+                    model_name = gr.Dropdown(label="Model", elem_id="sam_model", choices=model_list, value=model_list[0] if model_list else None)
                     refresh_models = ToolButton(value=refresh_symbol)
-                    refresh_models.click(
-                        refresh_sam_models, model_name, model_name)
+                    refresh_models.click(refresh_sam_models, model_name, model_name)
                 input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
                                        show_label=False, source="upload", type="pil", image_mode="RGBA")
                 dummy_component = gr.Label(visible=False)
