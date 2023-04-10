@@ -147,10 +147,7 @@ class Script(scripts.Script):
                 dummy_component = gr.Label(visible=False)
                 mask_image = gr.Gallery(
                     label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
-                run_button = gr.Button(
-                    value="Preview Segmentation", visible=False, elem_id="sam_run_button")
-                gr.Button(
-                    value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
+                run_button = gr.Button(value="Preview Segmentation", interactive=False, elem_id="sam_run_button")
                 with gr.Row():
                     enabled = gr.Checkbox(
                         value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")

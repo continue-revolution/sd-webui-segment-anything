@@ -16,16 +16,6 @@ function getRealCoordinate(image, x1, y1) {
     }
 }
 
-function displayRunButton() {
-    gradioApp().getElementById("sam_no_button").style.display = "none"
-    gradioApp().getElementById("sam_run_button").style.display = "block"
-}
-
-function displayNoButton() {
-    gradioApp().getElementById("sam_run_button").style.display = "none"
-    gradioApp().getElementById("sam_no_button").style.display = "block"
-}
-
 function createDot(sam_image, image, coord, label) {
     const x = coord.x;
     const y = coord.y;
@@ -47,10 +37,10 @@ function createDot(sam_image, image, coord, label) {
             circle.remove();
             if (gradioApp().querySelectorAll(".sam_positive").length == 0 &&
                 gradioApp().querySelectorAll(".sam_negative").length == 0) {
-                displayNoButton();
+                gradioApp().getElementById("sam_run_button").setAttribute("disabled", "");
             }
         });
-        displayRunButton()
+        gradioApp().getElementById("sam_run_button").removeAttribute("disabled");
     }
 }
 
@@ -62,7 +52,7 @@ function removeDots(parentDiv) {
             dot.remove();
         });
     })
-    displayNoButton()
+    gradioApp().getElementById("sam_run_button").setAttribute("disabled", "");
 }
 
 function create_submit_sam_args(args) {
