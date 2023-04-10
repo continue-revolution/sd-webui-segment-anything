@@ -1,2 +1,2 @@
-models/segment-everything/*
+models/segment-everything/*.pth
 scripts/__pycache__
