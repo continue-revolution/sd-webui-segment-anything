@@ -1,5 +1,6 @@
 import gc
 import os
+import glob
 import numpy as np
 from PIL import Image
 import torch
@@ -7,6 +8,7 @@ import gradio as gr
 from collections import OrderedDict
 from modules import scripts, shared
 from launch import run_pip
+from modules.paths import models_path
 from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc, cpu
@@ -19,9 +21,8 @@ except ImportError:
 
 
 model_cache = OrderedDict()
-sam_model_dir = os.path.join(scripts.basedir(), "models", "sam")
-model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
-    os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
+sam_model_dir = os.path.join(models_path, "sam")
+model_list = glob.glob("*.pth", root_dir=sam_model_dir)
 
 
 refresh_symbol = '\U0001f504'       # 🔄
@@ -64,8 +65,7 @@ def clear_sam_cache():
 
 def refresh_sam_models(*inputs):
     global model_list
-    model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
-        os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
+    model_list = glob.glob("*.pth", root_dir=sam_model_dir)
     dd = inputs[0]
     if dd in model_list:
         selected = dd
