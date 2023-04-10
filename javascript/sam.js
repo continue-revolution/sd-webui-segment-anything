@@ -45,8 +45,8 @@ function createDot(sam_image, image, coord, label) {
         circle.addEventListener("click", e => {
             e.stopPropagation();
             circle.remove();
-            if (gradioApp().getElementsByClassName("sam_positive").length == 0 &&
-                gradioApp().getElementsByClassName("sam_negative").length == 0) {
+            if (gradioApp().querySelectorAll(".sam_positive").length == 0 &&
+                gradioApp().querySelectorAll(".sam_negative").length == 0) {
                 displayNoButton();
             }
         });
