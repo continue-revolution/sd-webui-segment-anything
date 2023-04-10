@@ -5,12 +5,12 @@ from PIL import Image
 import torch
 import gradio as gr
 from collections import OrderedDict
-from modules import scripts
+from modules import scripts, shared
 from launch import run_pip
 from modules.paths_internal import extensions_dir
 from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
-from modules.devices import device, torch_gc
+from modules.devices import device, torch_gc, cpu
 
 try:
     from segment_anything import SamPredictor, build_sam
@@ -82,6 +82,8 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
 
     if model_name in model_cache:
         sam = model_cache[model_name]
+        if shared.cmd_opts.lowvram:
+            sam.to(device=device)
     elif model_name in model_list:
         clear_sam_cache()
         model_cache[model_name] = load_sam_model(model_name)
@@ -89,6 +91,7 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
     else:
         Exception(
             f"{model_name} not found, please download model to models/sam.")
+    
     predictor = SamPredictor(sam)
     print(f"Running SAM Inference {image_np_rgb.shape}")
     predictor.set_image(image_np_rgb)
@@ -100,6 +103,8 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
         point_labels=point_labels,
         multimask_output=True,
     )
+    if shared.cmd_opts.lowvram:
+        sam.to(cpu)
     print("Creating output image")
     masks_gallery = []
     mask_images = []
