@@ -15,7 +15,7 @@ Download segment-everything model from [here](https://github.com/facebookresearc
 ### Step 3:
 
 - Launch webui and switch to img2img mode. 
-- Upload your image, left click for positive prompt (black dot), right click for negative prompt (red dot), left click any dot again to cancel the prompt. 
+- Upload your image and **add prompts on the image (MUST)**. Left click for positive prompt (black dot), right click for negative prompt (red dot), left click any dot again to cancel the prompt. If you forgot to add prompts, there will be exceptions on your terminal.
 - Click `Preview Segmentation` button
 - Choose your favorite segmentation and check `Copy to Inpaint Upload`
 - Switch to `Inpaint upload`. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
