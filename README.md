@@ -6,7 +6,7 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 
 ### Step 1:
 
-Download this extension and run `pip install segment-anything` on your terminal
+Download this extension to `${sd-webui}/extensions` use whatever way you like (git clone or install from UI)
 
 ### Step 2:
 

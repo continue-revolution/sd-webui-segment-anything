@@ -10,7 +10,15 @@ from modules.paths_internal import extensions_dir
 from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc
-from segment_anything import SamPredictor, build_sam
+
+import subprocess
+
+try:
+    from segment_anything import SamPredictor, build_sam
+except ImportError:
+    subprocess.run(['python3', '-m', 'pip', 'install', 'segment_anything'])
+    from segment_anything import SamPredictor, build_sam
+
 
 model_cache = OrderedDict()
 sam_model_dir = os.path.join(extensions_dir, "sd-webui-segment-everything/models/segment-everything")
