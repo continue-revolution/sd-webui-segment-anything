@@ -12,6 +12,8 @@ Download this extension to `${sd-webui}/extensions` use whatever way you like (g
 
 Download segment-anything model from [here](https://github.com/facebookresearch/segment-anything#model-checkpoints) to `${sd-webui-segment-anything}/models/sam`
 
+To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) is 2.56GB, [vit_l](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth) is 1.25GB, [vit_b](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) is 375MB. I myself tested vit_h on NVIDIA 3090 Ti which is good. If you encounter VRAM problem, you should switch to smaller models.
+
 ### Step 3:
 
 - Launch webui and switch to img2img mode. 
