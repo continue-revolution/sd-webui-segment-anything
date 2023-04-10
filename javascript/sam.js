@@ -82,7 +82,7 @@ function submit_sam() {
     let positive_points = [];
     let negative_points = []; 
     const sam_image = gradioApp().getElementById("sam_input_image");
-    const image = sam_image.querySelector('.svelte-rlgzoo').firstChild.querySelector('.svelte-rlgzoo');
+    const image = sam_image.querySelector('img');
     const classes = [".sam_positive", ".sam_negative"];
     classes.forEach(cls => {
         const dots = sam_image.querySelectorAll(cls);
@@ -106,7 +106,7 @@ prevImg = null
 onUiUpdate(() => {
     const sam_image = gradioApp().getElementById("sam_input_image")
     if (sam_image) {
-        const image = sam_image.querySelector('.svelte-rlgzoo').firstChild.querySelector('.svelte-rlgzoo')
+        const image = sam_image.querySelector('img')
         if (image && prevImg != image.src) {
             removeDots(sam_image);
             prevImg = image.src;
