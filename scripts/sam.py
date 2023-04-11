@@ -126,7 +126,7 @@ class Script(scripts.Script):
 
     def ui(self, is_img2img):
         # if is_img2img:
-        with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion')):
+        with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion'), visible=is_img2img):
             with gr.Column():
                 gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>", label="Positive points")
                 with gr.Row():
