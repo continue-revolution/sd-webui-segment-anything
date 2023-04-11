@@ -12,6 +12,7 @@ If you are unable to add dot, observe [list index out of range](https://github.c
 
 In most cases, updating your WebUI can solve your problem. At this moment, I have not observed problem in the most updated version of WebUI while using LoRA and ControlNet. Before you submit your issue and before I have time to look into why this extension does not work for some old version of WebUI, I ask that you firstly check your version of your WebUI.
 
+When you encounter an issue, please at least provide your WebUI version, your extension version, your browser version, errors on your browser console log if there is any, error on your terminal log if there is any, to make sure that I can find a solution faster.
 
 ## How to use
 
