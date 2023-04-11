@@ -13,10 +13,10 @@ from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc, cpu
 
 try:
-    from segment_anything import SamPredictor, build_sam
+    from segment_anything import SamPredictor, sam_model_registry
 except ImportError:
     run_pip("install segment_anything", "segment_anything")
-    from segment_anything import SamPredictor, build_sam
+    from segment_anything import SamPredictor, sam_model_registry
 
 
 model_cache = OrderedDict()
@@ -50,9 +50,10 @@ def show_mask(image, mask, random_color=False, alpha=0.5):
 
 
 def load_sam_model(sam_checkpoint):
+    model_type = '_'.join(sam_checkpoint.split('_')[1:-1])
     sam_checkpoint = os.path.join(sam_model_dir, sam_checkpoint)
     torch.load = unsafe_torch_load
-    sam = build_sam(checkpoint=sam_checkpoint)
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)
     torch.load = load
     return sam
