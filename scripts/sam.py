@@ -72,9 +72,6 @@ def refresh_sam_models(*inputs):
     return gr.Dropdown.update(choices=model_list, value=selected)
 
 def dilate_mask(mask, dilation_amt):
-    # Convert the image to a binary numpy array
-    binary_img = np.array(img.convert('1'))
-
     # Create a dilation kernel
     dilation_kernel = np.zeros((dilation_amt, dilation_amt))
     center = dilation_amt // 2
@@ -87,7 +84,7 @@ def dilate_mask(mask, dilation_amt):
                 dilation_kernel[center+i, center+j] = 1
 
     # Dilate the image
-    dilated_binary_img = binary_dilation(binary_img, dilation_kernel)
+    dilated_binary_img = binary_dilation(mask, dilation_kernel)
 
     # Convert the dilated binary numpy array back to a PIL image
     dilated_mask = Image.fromarray(np.uint8(dilated_binary_img) * 255)
@@ -95,7 +92,7 @@ def dilate_mask(mask, dilation_amt):
     return dilated_mask
 
 
-def sam_predict(model_name, input_image, positive_points, negative_points, dilation_amt=0):
+def sam_predict(model_name, input_image, dilation_amt, positive_points, negative_points):
     print("Initializing SAM")
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
@@ -130,12 +127,12 @@ def sam_predict(model_name, input_image, positive_points, negative_points, dilat
     print("Creating output image")
     masks_gallery = []
     mask_images = []
-
     for mask in masks:
+        if dilation_amt:
+          mask_pil = dilate_mask(mask, dilation_amt)
+        else:
+          mask_pil = Image.fromarray(mask)
         blended_image = show_mask(image_np, mask)
-        mask_pil = Image.fromarray(mask)
-        if dilation_amt > 0:
-            dilate_mask(mask, dilation_amt)
         masks_gallery.append(mask_pil)
         mask_images.append(Image.fromarray(blended_image))
     return mask_images + masks_gallery
@@ -164,24 +161,23 @@ class Script(scripts.Script):
                         refresh_sam_models, model_name, model_name)
                 input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
                                     show_label=False, source="upload", type="pil", image_mode="RGBA")
+                dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
                 dummy_component = gr.Label(visible=False)
                 mask_image = gr.Gallery(
                     label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
                 with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
                     gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
-                    run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
-                    dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, label="Specify the amount that you wish to expand the mask by")
+                    run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button") 
                 with gr.Row():
                     enabled = gr.Checkbox(
                         value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
                     chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=[
                                         "0", "1", "2"], type="index")
-
             run_button.click(
                 fn=sam_predict,
                 _js='submit_sam',
-                inputs=[model_name, input_image,
-                        dummy_component, dummy_component, dilation_amt],
+                inputs=[model_name, input_image, dilation_amt,
+                        dummy_component, dummy_component],
                 outputs=[mask_image],
                 show_progress=False)
         return [enabled, input_image, mask_image, chosen_mask]

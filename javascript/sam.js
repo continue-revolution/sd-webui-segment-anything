@@ -94,8 +94,8 @@ function submit_sam() {
             }
         });
     });
-    res[2] = positive_points;
-    res[3] = negative_points;
+    res[3] = positive_points;
+    res[4] = negative_points;
     return res
 }
 
