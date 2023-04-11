@@ -5,6 +5,7 @@ from PIL import Image
 import torch
 import gradio as gr
 from collections import OrderedDict
+from scipy.ndimage import binary_dilation
 from modules import scripts, shared
 from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
@@ -70,8 +71,31 @@ def refresh_sam_models(*inputs):
         selected = None
     return gr.Dropdown.update(choices=model_list, value=selected)
 
+def dilate_mask(mask, dilation_amt):
+    # Convert the image to a binary numpy array
+    binary_img = np.array(img.convert('1'))
 
-def sam_predict(model_name, input_image, positive_points, negative_points):
+    # Create a dilation kernel
+    dilation_kernel = np.zeros((dilation_amt, dilation_amt))
+    center = dilation_amt // 2
+    for i in range(center):
+        for j in range(center):
+            if i**2 + j**2 <= center**2:
+                dilation_kernel[center-i, center-j] = 1
+                dilation_kernel[center+i, center-j] = 1
+                dilation_kernel[center-i, center+j] = 1
+                dilation_kernel[center+i, center+j] = 1
+
+    # Dilate the image
+    dilated_binary_img = binary_dilation(binary_img, dilation_kernel)
+
+    # Convert the dilated binary numpy array back to a PIL image
+    dilated_mask = Image.fromarray(np.uint8(dilated_binary_img) * 255)
+
+    return dilated_mask
+
+
+def sam_predict(model_name, input_image, positive_points, negative_points, dilation_amt=0):
     print("Initializing SAM")
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
@@ -109,7 +133,10 @@ def sam_predict(model_name, input_image, positive_points, negative_points):
 
     for mask in masks:
         blended_image = show_mask(image_np, mask)
-        masks_gallery.append(Image.fromarray(mask))
+        mask_pil = Image.fromarray(mask)
+        if dilation_amt > 0:
+            dilate_mask(mask, dilation_amt)
+        masks_gallery.append(mask_pil)
         mask_images.append(Image.fromarray(blended_image))
     return mask_images + masks_gallery
 
@@ -143,6 +170,7 @@ class Script(scripts.Script):
                 with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
                     gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
                     run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
+                    dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, label="Specify the amount that you wish to expand the mask by")
                 with gr.Row():
                     enabled = gr.Checkbox(
                         value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
@@ -153,7 +181,7 @@ class Script(scripts.Script):
                 fn=sam_predict,
                 _js='submit_sam',
                 inputs=[model_name, input_image,
-                        dummy_component, dummy_component],
+                        dummy_component, dummy_component, dilation_amt],
                 outputs=[mask_image],
                 show_progress=False)
         return [enabled, input_image, mask_image, chosen_mask]
