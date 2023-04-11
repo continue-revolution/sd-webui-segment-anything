@@ -11,7 +11,7 @@ from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc, cpu
 from segment_anything import SamPredictor, sam_model_registry
-
+from scripts.dino import dino_model_list, dino_predict
 
 sam_model_cache = OrderedDict()
 sam_model_dir = os.path.join(scripts.basedir(), "models/sam")
@@ -32,13 +32,25 @@ class ToolButton(gr.Button, gr.components.FormComponent):
         return "button"
 
 
-def show_mask(image, mask, random_color=False, alpha=0.5):
+def show_box(image, boxes_filt, color=np.array([1, 0, 0, 1]), thickness=2):
+    for box in boxes_filt:
+        x, y, w, h = box
+        image[y:y+thickness, x:x+w] = color
+        image[y+h:y+h+thickness, x:x+w] = color
+        image[y:y+h, x:x+thickness] = color
+        image[y:y+h, x+w:x+w+thickness] = color
+    return image
+        
+
+def show_mask(image, mask, random_color=False, alpha=0.5, boxes_filt=None):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:
         color = np.array([30/255, 144/255, 255/255, 0.6])
     image[mask] = image[mask] * (1 - alpha) + 255 * \
         color.reshape(1, 1, -1) * alpha
+    if boxes_filt is not None:
+        image = show_box(image, boxes_filt)
     return image.astype(np.uint8)
 
 
@@ -48,6 +60,7 @@ def load_sam_model(sam_checkpoint):
     torch.load = unsafe_torch_load
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=device)
+    sam.eval()
     torch.load = load
     return sam
 
@@ -73,12 +86,12 @@ def refresh_sam_models(*inputs):
 
 
 def sam_predict(sam_model_name, input_image, positive_points, negative_points,
-                dino_checkbox, dino_model_name, text_prompt, text_threshold, box_threshold):
+                dino_checkbox, dino_model_name, text_prompt, box_threshold):
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
-    
-    if dino_checkbox:
-        print("Initializing GroundingDINO ")
+    dino_enabled = dino_checkbox and text_prompt is not None
+
+    boxes_filt = dino_predict(input_image, dino_model_name, text_prompt, box_threshold) if dino_enabled else None
 
     print("Initializing SAM")
     if sam_model_name in sam_model_cache:
@@ -93,27 +106,30 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         Exception(
             f"{sam_model_name} not found, please download model to models/sam.")
 
-    predictor = SamPredictor(sam)
     print(f"Running SAM Inference {image_np_rgb.shape}")
+    predictor = SamPredictor(sam)
     predictor.set_image(image_np_rgb)
     point_coords = np.array(positive_points + negative_points)
     point_labels = np.array(
         [1] * len(positive_points) + [0] * len(negative_points))
+    
     masks, _, _ = predictor.predict(
         point_coords=point_coords,
         point_labels=point_labels,
+        box=predictor.transform.apply_boxes(
+            boxes_filt, image_np.shape[:2]) if dino_enabled else None,
         multimask_output=True,
     )
     if shared.cmd_opts.lowvram:
         sam.to(cpu)
     gc.collect()
     torch_gc()
+    
     print("Creating output image")
     masks_gallery = []
     mask_images = []
-
     for mask in masks:
-        blended_image = show_mask(image_np, mask)
+        blended_image = show_mask(image_np, mask, boxes_filt=boxes_filt)
         masks_gallery.append(Image.fromarray(mask))
         mask_images.append(Image.fromarray(blended_image))
     return mask_images + masks_gallery
@@ -130,7 +146,6 @@ class Script(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        # if is_img2img:
         with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion'), visible=is_img2img):
             with gr.Column():
                 gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>", label="Positive points")
@@ -144,21 +159,18 @@ class Script(scripts.Script):
                                     show_label=False, source="upload", type="pil", image_mode="RGBA")
                 dummy_component = gr.Label(visible=False)
                 
-                dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO for text prompt->object detection->segmentation")
+                dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO for [text prompt]->[object detection]->[segmentation]")
                 with gr.Column(visible=False) as dino_column:
-                    dino_models = ["GroundingDINO_SwinT_OGC (694MB)", "GroundingDINO_SwinB (938MB)"]
                     dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", 
-                                                    elem_id="dino_model", choices=dino_models, value=dino_models[0])
+                                                  elem_id="dino_model", choices=dino_model_list, value=dino_model_list[0])
                     text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt")
-                    with gr.Row():
-                        box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
-                        text_threshold = gr.Slider(label="GroundingDINO Text Threshold", minimum=0.0, maximum=1.0, value=0.25, step=0.001)
+                    box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
 
                 mask_image = gr.Gallery(
                     label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
 
                 with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
-                    gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
+                    gr.Button(value="You cannot preview segmentation because you have not added dot prompt or enabled GroundingDINO with text prompts.", elem_id="sam_no_button")
                     run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
                 with gr.Row():
                     enabled = gr.Checkbox(
@@ -171,7 +183,7 @@ class Script(scripts.Script):
                 _js='submit_sam',
                 inputs=[sam_model_name, input_image,        # SAM
                         dummy_component, dummy_component,   # Point prompts
-                        dino_checkbox, dino_model_name, text_prompt, text_threshold, box_threshold],  # DINO Prompts
+                        dino_checkbox, dino_model_name, text_prompt, box_threshold],  # DINO Prompts
                 outputs=[mask_image],
                 show_progress=False)
             
