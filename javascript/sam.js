@@ -17,15 +17,11 @@ function getRealCoordinate(image, x1, y1) {
 }
 
 function enableRunButton() {
-    var button = gradioApp().getElementById("sam_run_button")
-    button.removeAttribute("disabled");
-    button.textContent = "Preview Segmentation";
+    gradioApp().getElementById("sam_run_button").style.display = "block";
 }
 
 function disableRunButton() {
-    var button = gradioApp().getElementById("sam_run_button")
-    button.setAttribute("disabled", "");
-    button.textContent = "You cannot preview segmentation because you have not added dot prompt.";
+    gradioApp().getElementById("sam_run_button").style.display = "none";
 }
 
 function createDot(sam_image, image, coord, label) {

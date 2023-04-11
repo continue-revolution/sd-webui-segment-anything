@@ -131,21 +131,23 @@ class Script(scripts.Script):
                 gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>", label="Positive points")
                 with gr.Row():
                     model_name = gr.Dropdown(label="Model", elem_id="sam_model", choices=model_list,
-                                             value=model_list[0] if len(model_list) > 0 else None)
+                                            value=model_list[0] if len(model_list) > 0 else None)
                     refresh_models = ToolButton(value=refresh_symbol)
                     refresh_models.click(
                         refresh_sam_models, model_name, model_name)
                 input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
-                                       show_label=False, source="upload", type="pil", image_mode="RGBA")
+                                    show_label=False, source="upload", type="pil", image_mode="RGBA")
                 dummy_component = gr.Label(visible=False)
                 mask_image = gr.Gallery(
                     label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
-                run_button = gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", interactive=False, elem_id="sam_run_button")
+                with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
+                    gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
+                    run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
                 with gr.Row():
                     enabled = gr.Checkbox(
                         value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
                     chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=[
-                                           "0", "1", "2"], type="index")
+                                        "0", "1", "2"], type="index")
 
             run_button.click(
                 fn=sam_predict,
