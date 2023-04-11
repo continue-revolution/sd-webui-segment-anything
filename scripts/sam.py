@@ -73,15 +73,9 @@ def refresh_sam_models(*inputs):
 
 def dilate_mask(mask, dilation_amt):
     # Create a dilation kernel
-    dilation_kernel = np.zeros((dilation_amt, dilation_amt))
+    x, y = np.meshgrid(np.arange(dilation_amt), np.arange(dilation_amt))
     center = dilation_amt // 2
-    for i in range(center):
-        for j in range(center):
-            if i**2 + j**2 <= center**2:
-                dilation_kernel[center-i, center-j] = 1
-                dilation_kernel[center+i, center-j] = 1
-                dilation_kernel[center-i, center+j] = 1
-                dilation_kernel[center+i, center+j] = 1
+    dilation_kernel = ((x - center)**2 + (y - center)**2 <= center**2).astype(np.uint8)
 
     # Dilate the image
     dilated_binary_img = binary_dilation(mask, dilation_kernel)
