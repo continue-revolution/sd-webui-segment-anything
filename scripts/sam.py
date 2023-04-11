@@ -57,6 +57,20 @@ def clear_sam_cache():
     gc.collect()
     torch_gc()
 
+def update_mask(mask_image, dilation_amt):
+    print("Dilation Amount: ", dilation_amt)
+    mask_images = [Image.open(mi['name']) for mi in mask_image[:3]]
+    masks_gallery = [Image.open(mg['name']) for mg in mask_image[3:]]
+    for idx, mask in enumerate(masks_gallery):
+        if dilation_amt:
+          # Convert the image to a binary numpy array
+          binary_img = np.array(mask.convert('1'))
+          mask_pil = dilate_mask(binary_img, dilation_amt)
+          masks_gallery[idx] = mask_pil
+        else:
+          pass
+    mask_image = mask_images + masks_gallery
+    return gr.Gallery.update(value=mask_image)
 
 def refresh_sam_models(*inputs):
     global model_list
@@ -155,13 +169,15 @@ class Script(scripts.Script):
                         refresh_sam_models, model_name, model_name)
                 input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
                                     show_label=False, source="upload", type="pil", image_mode="RGBA")
-                dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
                 dummy_component = gr.Label(visible=False)
                 mask_image = gr.Gallery(
                     label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
+                dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
                 with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
                     gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
                     run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button") 
+                with gr.Row(elem_id="sam_generate_box"):
+                    update_mask_button = gr.Button(value="Update Mask", elem_id="update_mask_button", interactive=True if mask_image else False) 
                 with gr.Row():
                     enabled = gr.Checkbox(
                         value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
@@ -174,6 +190,7 @@ class Script(scripts.Script):
                         dummy_component, dummy_component],
                 outputs=[mask_image],
                 show_progress=False)
+            update_mask_button.click(update_mask, inputs = [mask_image, dilation_amt], outputs=[mask_image])
         return [enabled, input_image, mask_image, chosen_mask]
 
     def process(self, p: StableDiffusionProcessingImg2Img, enabled=False, input_image=None, mask=None, chosen_mask=0):
