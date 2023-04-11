@@ -2,6 +2,17 @@
 
 This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) to do stable diffusion inpainting.
 
+## Update your WebUI version
+
+If you are unable to add dot, observe [list index out of range](https://github.com/continue-revolution/sd-webui-segment-anything/issues/6) error on your terminal, or any other error, the most probable reason is one of the following:
+
+1. Your webui is outdated (such as you are using this commitment: a9fed7c364061ae6efb37f797b6b522cb3cf7aa2)
+2. Your extension is outdated
+3. Your browser is outdated
+
+In most cases, updating your WebUI can solve your problem. At this moment, I have not observed problem in the most updated version of WebUI while using LoRA and ControlNet. Before you submit your issue and before I have time to look into why this extension does not work for some old version of WebUI, I ask that you firstly check your version of your WebUI.
+
+
 ## How to use
 
 ### Step 1:
