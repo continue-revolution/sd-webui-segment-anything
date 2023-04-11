@@ -16,6 +16,18 @@ function getRealCoordinate(image, x1, y1) {
     }
 }
 
+function enableRunButton() {
+    var button = gradioApp().getElementById("sam_run_button")
+    button.removeAttribute("disabled");
+    button.textContent = "Preview Segmentation";
+}
+
+function disableRunButton() {
+    var button = gradioApp().getElementById("sam_run_button")
+    button.setAttribute("disabled", "");
+    button.textContent = "You cannot preview segmentation because you have not added dot prompt.";
+}
+
 function createDot(sam_image, image, coord, label) {
     const x = coord.x;
     const y = coord.y;
@@ -37,10 +49,10 @@ function createDot(sam_image, image, coord, label) {
             circle.remove();
             if (gradioApp().querySelectorAll(".sam_positive").length == 0 &&
                 gradioApp().querySelectorAll(".sam_negative").length == 0) {
-                gradioApp().getElementById("sam_run_button").setAttribute("disabled", "");
+                disableRunButton();
             }
         });
-        gradioApp().getElementById("sam_run_button").removeAttribute("disabled");
+        enableRunButton();
     }
 }
 
@@ -52,7 +64,7 @@ function removeDots(parentDiv) {
             dot.remove();
         });
     })
-    gradioApp().getElementById("sam_run_button").setAttribute("disabled", "");
+    disableRunButton();
 }
 
 function create_submit_sam_args(args) {
