@@ -5,7 +5,7 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 ## News
 
 - `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
-- `2023/04/13`: [Feature] Experimental [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. The full featured GroundingDINO support is still under development
+- `2023/04/13`: [Feature] Preview version of [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. The full featured GroundingDINO support is still under development.
 
 ## Plan
 
