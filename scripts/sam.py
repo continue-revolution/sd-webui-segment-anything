@@ -1,5 +1,6 @@
 import gc
 import os
+import copy
 import numpy as np
 from PIL import Image
 import torch
@@ -32,25 +33,25 @@ class ToolButton(gr.Button, gr.components.FormComponent):
         return "button"
 
 
-def show_box(image, boxes_filt, color=np.array([1, 0, 0, 1]), thickness=2):
-    for box in boxes_filt:
-        x, y, w, h = box
-        image[y:y+thickness, x:x+w] = color
-        image[y+h:y+h+thickness, x:x+w] = color
-        image[y:y+h, x:x+thickness] = color
-        image[y:y+h, x+w:x+w+thickness] = color
+def show_box(image, box, color=np.array([255, 0, 0, 255]), thickness=2):
+    x, y, w, h = box
+    image[y:y+thickness, x:x+w] = color
+    image[y+h:y+h+thickness, x:x+w] = color
+    image[y:y+h, x:x+thickness] = color
+    image[y:y+h, x+w:x+w+thickness] = color
     return image
         
 
-def show_mask(image, mask, random_color=False, alpha=0.5, boxes_filt=None):
+def show_mask(image_np, mask, random_color=False, alpha=0.5, box=None):
+    image = copy.deepcopy(image_np)
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:
         color = np.array([30/255, 144/255, 255/255, 0.6])
     image[mask] = image[mask] * (1 - alpha) + 255 * \
         color.reshape(1, 1, -1) * alpha
-    if boxes_filt is not None:
-        image = show_box(image, boxes_filt)
+    if box is not None:
+        image = show_box(image, box)
     return image.astype(np.uint8)
 
 
@@ -110,28 +111,31 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     predictor = SamPredictor(sam)
     predictor.set_image(image_np_rgb)
     point_coords = np.array(positive_points + negative_points)
-    point_labels = np.array(
-        [1] * len(positive_points) + [0] * len(negative_points))
-    
+    point_labels = np.array([1] * len(positive_points) + [0] * len(negative_points))
+
+    # Otherwise, at most one box applied with the largest logit
+    box = boxes_filt[0].numpy() if boxes_filt is not None else None
     masks, _, _ = predictor.predict(
-        point_coords=point_coords,
-        point_labels=point_labels,
-        box=predictor.transform.apply_boxes(
-            boxes_filt, image_np.shape[:2]) if dino_enabled else None,
+        point_coords=point_coords if len(point_coords) > 0 else None,
+        point_labels=point_labels if len(point_coords) > 0 else None,
+        box=box,
         multimask_output=True,
     )
+    box = predictor.transform.apply_boxes(box, image_np.shape[:2]).flatten().astype(int) if box is not None else None
+
     if shared.cmd_opts.lowvram:
         sam.to(cpu)
     gc.collect()
     torch_gc()
-    
+
     print("Creating output image")
     masks_gallery = []
     mask_images = []
     for mask in masks:
-        blended_image = show_mask(image_np, mask, boxes_filt=boxes_filt)
+        blended_image = show_mask(image_np, mask, box=box)
         masks_gallery.append(Image.fromarray(mask))
         mask_images.append(Image.fromarray(blended_image))
+
     return mask_images + masks_gallery
 
 
@@ -148,7 +152,7 @@ class Script(scripts.Script):
     def ui(self, is_img2img):
         with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion'), visible=is_img2img):
             with gr.Column():
-                gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>", label="Positive points")
+                gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
                 with gr.Row():
                     sam_model_name = gr.Dropdown(label="Model", elem_id="sam_model", choices=sam_model_list,
                                             value=sam_model_list[0] if len(sam_model_list) > 0 else None)
@@ -158,12 +162,18 @@ class Script(scripts.Script):
                 input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
                                     show_label=False, source="upload", type="pil", image_mode="RGBA")
                 dummy_component = gr.Label(visible=False)
-                
-                dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO for [text prompt]->[object detection]->[segmentation]")
+
+                gr.HTML(value="<p>GroundingDINO + Segment Anything can achieve [text prompt]->[object detection]->[segmentation]</p>")
+                dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id="dino_enable_checkbox")
                 with gr.Column(visible=False) as dino_column:
+                    gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
+                    gr.HTML(value="<p>In the current version: only one box will be used for segmentation. We will support more options if there is a need.</p>")
                     dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", 
                                                   elem_id="dino_model", choices=dino_model_list, value=dino_model_list[0])
-                    text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt")
+
+                    text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id="dino_text_prompt")
+                    text_prompt.change(fn=lambda x: None, inputs=[dummy_component], outputs=None, _js="registerDinoTextObserver")
+
                     box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
 
                 mask_image = gr.Gallery(
@@ -173,17 +183,16 @@ class Script(scripts.Script):
                     gr.Button(value="You cannot preview segmentation because you have not added dot prompt or enabled GroundingDINO with text prompts.", elem_id="sam_no_button")
                     run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
                 with gr.Row():
-                    enabled = gr.Checkbox(
-                        value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
-                    chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=[
-                                        "0", "1", "2"], type="index")
+                    enabled = gr.Checkbox(value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
+                    switch = gr.Button(value="Switch to Inpaint Upload")
+                    chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
 
             run_button.click(
                 fn=sam_predict,
                 _js='submit_sam',
                 inputs=[sam_model_name, input_image,        # SAM
                         dummy_component, dummy_component,   # Point prompts
-                        dino_checkbox, dino_model_name, text_prompt, box_threshold],  # DINO Prompts
+                        dino_checkbox, dino_model_name, text_prompt, box_threshold], # DINO prompts
                 outputs=[mask_image],
                 show_progress=False)
             
@@ -192,6 +201,13 @@ class Script(scripts.Script):
                 inputs=[dino_checkbox],
                 outputs=[dino_column],
                 show_progress=False)
+            
+            switch.click(
+                fn=lambda x: None,
+                _js="switchToInpaintUpload",
+                inputs=[dummy_component],
+                outputs=None
+            )
         return [enabled, input_image, mask_image, chosen_mask]
 
     def process(self, p: StableDiffusionProcessingImg2Img, enabled=False, input_image=None, mask=None, chosen_mask=0):

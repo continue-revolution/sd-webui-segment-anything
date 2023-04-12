@@ -8,7 +8,7 @@ function getRealCoordinate(image, x1, y1) {
         return [x, y]
     } else {
         // height is filled, width has padding
-        const scale = image.naturalHeight / image.height 
+        const scale = image.naturalHeight / image.height
         const zero_point = (image.width - image.naturalWidth / scale) / 2
         const x = (x1 - zero_point) * scale
         const y = y1 * scale
@@ -16,12 +16,30 @@ function getRealCoordinate(image, x1, y1) {
     }
 }
 
-function enableRunButton() {
-    gradioApp().getElementById("sam_run_button").style.display = "block";
+function changeRunButton() {
+    const sam_run_button = gradioApp().getElementById("sam_run_button");
+    const mode = (samHasImageInput() && (samCanSubmit() || dinoCanSubmit())) ? "block" : "none";
+    if (sam_run_button && sam_run_button.style.display != mode) {
+        sam_run_button.style.display = mode;
+    }
 }
 
-function disableRunButton() {
-    gradioApp().getElementById("sam_run_button").style.display = "none";
+function registerDinoTextObserver() {
+    const dino_text_prompt = gradioApp().getElementById("dino_text_prompt").querySelector("textarea")
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            if (mutation.target === dino_text_prompt) {
+                changeRunButton();
+            }
+        });
+    });
+    observer.observe(dino_text_prompt, { attributes: true });
+    return arguments;
+}
+
+function switchToInpaintUpload() {
+    switch_to_img2img_tab(4)
+    return arguments;
 }
 
 function createDot(sam_image, image, coord, label) {
@@ -43,24 +61,18 @@ function createDot(sam_image, image, coord, label) {
         circle.addEventListener("click", e => {
             e.stopPropagation();
             circle.remove();
-            if (gradioApp().querySelectorAll(".sam_positive").length == 0 &&
-                gradioApp().querySelectorAll(".sam_negative").length == 0) {
-                disableRunButton();
-            }
         });
-        enableRunButton();
     }
 }
 
 function removeDots(parentDiv) {
     [".sam_positive", ".sam_negative"].forEach(cls => {
         const dots = parentDiv.querySelectorAll(cls);
-    
+
         dots.forEach(dot => {
             dot.remove();
         });
     })
-    disableRunButton();
 }
 
 function create_submit_sam_args(args) {
@@ -70,7 +82,6 @@ function create_submit_sam_args(args) {
     }
 
     res[res.length - 1] = null
-    res[res.length - 2] = null
 
     return res
 }
@@ -78,7 +89,7 @@ function create_submit_sam_args(args) {
 function submit_sam() {
     let res = create_submit_sam_args(arguments);
     let positive_points = [];
-    let negative_points = []; 
+    let negative_points = [];
     const sam_image = gradioApp().getElementById("sam_input_image");
     const image = sam_image.querySelector('img');
     const classes = [".sam_positive", ".sam_negative"];
@@ -97,6 +108,26 @@ function submit_sam() {
     res[2] = positive_points;
     res[3] = negative_points;
     return res
+}
+
+function dinoCanSubmit() {
+    const dino_enable_checkbox = gradioApp().getElementById("dino_enable_checkbox")
+    const dino_text_prompt = gradioApp().getElementById("dino_text_prompt")
+    return (dino_enable_checkbox && dino_text_prompt &&
+        dino_enable_checkbox.querySelector("input") &&
+        dino_enable_checkbox.querySelector("input").checked &&
+        dino_text_prompt.querySelector("textarea") &&
+        dino_text_prompt.querySelector("textarea").value != "")
+}
+
+function samCanSubmit() {
+    return (gradioApp().querySelectorAll(".sam_positive").length > 0 ||
+        gradioApp().querySelectorAll(".sam_negative").length > 0)
+}
+
+function samHasImageInput() {
+    const sam_image = gradioApp().getElementById("sam_input_image")
+    return sam_image && sam_image.querySelector('img')
 }
 
 prevImg = null
@@ -141,4 +172,6 @@ onUiUpdate(() => {
             prevImg = null;
         }
     }
+
+    changeRunButton();
 })
