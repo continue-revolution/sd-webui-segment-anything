@@ -57,20 +57,16 @@ def clear_sam_cache():
     gc.collect()
     torch_gc()
 
-def update_mask(mask_image, dilation_amt):
+def update_mask(mask_gallery, chosen_mask, dilation_amt):
     print("Dilation Amount: ", dilation_amt)
-    mask_images = [Image.open(mi['name']) for mi in mask_image[:3]]
-    masks_gallery = [Image.open(mg['name']) for mg in mask_image[3:]]
-    for idx, mask in enumerate(masks_gallery):
-        if dilation_amt:
-          # Convert the image to a binary numpy array
-          binary_img = np.array(mask.convert('1'))
-          mask_pil = dilate_mask(binary_img, dilation_amt)
-          masks_gallery[idx] = mask_pil
-        else:
-          pass
-    mask_image = mask_images + masks_gallery
-    return gr.Gallery.update(value=mask_image)
+    mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
+    if dilation_amt:
+        # Convert the image to a binary numpy array
+        binary_img = np.array(mask_image.convert('1'))
+        mask_image = dilate_mask(binary_img, dilation_amt)
+    else:
+        pass
+    return mask_image
 
 def refresh_sam_models(*inputs):
     global model_list
@@ -100,7 +96,7 @@ def dilate_mask(mask, dilation_amt):
     return dilated_mask
 
 
-def sam_predict(model_name, input_image, dilation_amt, positive_points, negative_points):
+def sam_predict(model_name, input_image, chosen_img, positive_points, negative_points):
     print("Initializing SAM")
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
@@ -136,14 +132,11 @@ def sam_predict(model_name, input_image, dilation_amt, positive_points, negative
     masks_gallery = []
     mask_images = []
     for mask in masks:
-        if dilation_amt:
-          mask_pil = dilate_mask(mask, dilation_amt)
-        else:
-          mask_pil = Image.fromarray(mask)
+        mask_pil = Image.fromarray(mask)
         blended_image = show_mask(image_np, mask)
         masks_gallery.append(mask_pil)
         mask_images.append(Image.fromarray(blended_image))
-    return mask_images + masks_gallery
+    return mask_images + masks_gallery, masks_gallery[chosen_img]
 
 
 class Script(scripts.Script):
@@ -159,6 +152,7 @@ class Script(scripts.Script):
     def ui(self, is_img2img):
         # if is_img2img:
         with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion'), visible=is_img2img):
+            masks_generated = False
             with gr.Column():
                 gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>", label="Positive points")
                 with gr.Row():
@@ -172,29 +166,30 @@ class Script(scripts.Script):
                 dummy_component = gr.Label(visible=False)
                 mask_image = gr.Gallery(
                     label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
-                dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
                 with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
                     gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
                     run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button") 
-                with gr.Row(elem_id="sam_generate_box"):
-                    update_mask_button = gr.Button(value="Update Mask", elem_id="update_mask_button", interactive=True if mask_image else False) 
                 with gr.Row():
                     enabled = gr.Checkbox(
                         value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
                     chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=[
                                         "0", "1", "2"], type="index")
+                with gr.Row(elem_id="sam_generate_box"):
+                    dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
+                    expanded_mask_image = gr.Image(label="Chosen Mask Image", elem_id="sam_expanded_mask", type="pil", image_mode="RGBA")
+                update_mask_button = gr.Button(value="Update Mask", elem_id="update_mask_button")
             run_button.click(
                 fn=sam_predict,
                 _js='submit_sam',
-                inputs=[model_name, input_image, dilation_amt,
+                inputs=[model_name, input_image, chosen_mask,
                         dummy_component, dummy_component],
-                outputs=[mask_image],
+                outputs=[mask_image, expanded_mask_image],
                 show_progress=False)
-            update_mask_button.click(update_mask, inputs = [mask_image, dilation_amt], outputs=[mask_image])
-        return [enabled, input_image, mask_image, chosen_mask]
+            update_mask_button.click(update_mask, inputs = [mask_image, chosen_mask, dilation_amt], outputs=[expanded_mask_image])
+        return [enabled, input_image, expanded_mask_image]
 
-    def process(self, p: StableDiffusionProcessingImg2Img, enabled=False, input_image=None, mask=None, chosen_mask=0):
+    def process(self, p: StableDiffusionProcessingImg2Img, enabled=False, input_image=None, mask=None):
         if not enabled or input_image is None or mask is None or not isinstance(p, StableDiffusionProcessingImg2Img):
             return
         p.init_images = [input_image]
-        p.image_mask = Image.open(mask[chosen_mask + 3]['name'])
+        p.image_mask = mask
