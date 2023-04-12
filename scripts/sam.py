@@ -167,7 +167,11 @@ class Script(scripts.Script):
                 mask_image = gr.Gallery(label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
                 with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
                     gr.Button(value="You cannot preview segmentation because you have not added dot prompt.", elem_id="sam_no_button")
-                    run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button") 
+                    run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
+                with gr.Row():
+                    realtime_preview = gr.Checkbox(
+                        value=False, label="Preview automatically",
+                        elem_id="sam_realtime_preview_checkbox")
                 with gr.Row():
                     enabled = gr.Checkbox(value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
                     chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")

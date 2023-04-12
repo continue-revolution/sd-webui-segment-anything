@@ -8,7 +8,7 @@ function getRealCoordinate(image, x1, y1) {
         return [x, y]
     } else {
         // height is filled, width has padding
-        const scale = image.naturalHeight / image.height 
+        const scale = image.naturalHeight / image.height
         const zero_point = (image.width - image.naturalWidth / scale) / 2
         const x = (x1 - zero_point) * scale
         const y = y1 * scale
@@ -22,6 +22,17 @@ function enableRunButton() {
 
 function disableRunButton() {
     gradioApp().getElementById("sam_run_button").style.display = "none";
+}
+
+function immediatelyGenerate() {
+    const runButton = gradioApp().getElementById("sam_run_button");
+    if (runButton.style.display !== "none") {
+        runButton.click();
+
+    }
+}
+function isRealTimePreview() {
+    return gradioApp().querySelector("#sam_realtime_preview_checkbox input[type='checkbox']").checked;
 }
 
 function createDot(sam_image, image, coord, label) {
@@ -46,16 +57,23 @@ function createDot(sam_image, image, coord, label) {
             if (gradioApp().querySelectorAll(".sam_positive").length == 0 &&
                 gradioApp().querySelectorAll(".sam_negative").length == 0) {
                 disableRunButton();
+            } else {
+                if (isRealTimePreview()) {
+                    immediatelyGenerate();
+                }
             }
         });
         enableRunButton();
+        if (isRealTimePreview()) {
+            immediatelyGenerate();
+        }
     }
 }
 
 function removeDots(parentDiv) {
     [".sam_positive", ".sam_negative"].forEach(cls => {
         const dots = parentDiv.querySelectorAll(cls);
-    
+
         dots.forEach(dot => {
             dot.remove();
         });
@@ -77,7 +95,7 @@ function create_submit_sam_args(args) {
 function submit_sam() {
     let res = create_submit_sam_args(arguments);
     let positive_points = [];
-    let negative_points = []; 
+    let negative_points = [];
     const sam_image = gradioApp().getElementById("sam_input_image");
     const image = sam_image.querySelector('img');
     const classes = [".sam_positive", ".sam_negative"];
