@@ -1,18 +1,28 @@
-# Segment Anything for Stable Diffusion Webui
+# Segment Anything for Stable Diffusion WebUI
 
 This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) to do stable diffusion inpainting.
 
+## News
+
+- `2023/04/12`: [Feature] Mask expansion enabled. Thanks @jordan-barrett-jm for your great contribution!
+- `2023/04/12`: [Feature] Experimental [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. The current implementation is **VERY** unstable. I recommend waiting until it is merged into master branch to use it.
+
+## Plan
+
+Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
+
+- [x] Support mask expansion
+- [ ] Support text->detection->segmentation from [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything/) and merge to master branch
+- [ ] Support API as mentioned in #15
+- [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
+- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet)
+- [ ] Batch process to support LoRA/LyCORIS training
+
 ## Update your WebUI version
 
-If you are unable to add dot, observe [list index out of range](https://github.com/continue-revolution/sd-webui-segment-anything/issues/6) error on your terminal, or any other error, the most probable reason is one of the following:
+If you are unable to add dot, observe [list index out of range](https://github.com/continue-revolution/sd-webui-segment-anything/issues/6) error on your terminal, or any other error, the most probable reason is that your WebUI is outdated (such as you are using this commitment: `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`).
 
-1. Your webui is outdated (such as you are using this commitment: `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
-2. Your extension is outdated
-3. Your browser is outdated
-
-In most cases, updating your WebUI can solve your problem. At this moment, I have not observed problem in the most updated version (`22bcc7be428c94e9408f589966c2040187245d81`) of WebUI while using LoRA and ControlNet. Before you submit your issue and before I have time to look into why this extension does not work for some old version of WebUI, I ask that you firstly check your version of your WebUI.
-
-When you encounter an issue, please at least provide your WebUI version, your extension version, your browser version, errors on your browser console log if there is any, error on your terminal log if there is any, to make sure that I can find a solution faster.
+In most cases, updating your WebUI can solve your problem. Before you submit your issue and before I release support for some old version of WebUI, I ask that you firstly check your version of your WebUI.
 
 ## How to use
 
@@ -32,20 +42,18 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 - Upload your image and **add prompts on the image (MUST)**. Left click for positive prompt (black dot), right click for negative prompt (red dot), left click any dot again to cancel the prompt. If you forgot to add prompts, there will be exceptions on your terminal.
 - Click `Preview Segmentation` button
 - Choose your favorite segmentation and check `Copy to Inpaint Upload`
+- Optionally check `Expand Mask` and specify the amount, then click `Update Mask`
 - Switch to `Inpaint upload`. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
 
 ### Demo
 
 https://user-images.githubusercontent.com/63914308/230916163-af661008-5a50-496e-8b79-8be7f193f9e9.mp4
 
-## Future Plan
-
-I plan to support text->object detection->segmentation from [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything/) in the near future. Stay tuned!
 
 ## Contribute
 
 Disclaimer: I have not thoroughly tested this extension, so there might be bugs. Bear with me while I'm fixing them :)
 
-If you encounter a bug, please submit a issue. 
+If you encounter a bug, please submit a issue. Please at least provide your WebUI version, your extension version, your browser version, errors on your browser console log if there is any, error on your terminal log if there is any, to make sure that I can find a solution faster.
 
 I welcome any contribution. Please submit a pull request if you want to contribute
