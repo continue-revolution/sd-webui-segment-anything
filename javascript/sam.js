@@ -70,7 +70,6 @@ function create_submit_sam_args(args) {
     }
 
     res[res.length - 1] = null
-    res[res.length - 2] = null
 
     return res
 }
