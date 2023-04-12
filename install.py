@@ -8,10 +8,7 @@ with open(req_file) as file:
     for lib in file:
         lib = lib.strip()
         if not launch.is_installed(lib):
+            if lib == "groundingdino":
+                lib = "git+https://github.com/IDEA-Research/GroundingDINO"
             launch.run_pip(
                 f"install {lib}", f"sd-webui-segment-anything requirement: {lib}")
-
-# dino_dir = os.path.join(current_dir, "GroundingDINO")
-# launch.git_clone("https://github.com/IDEA-Research/GroundingDINO.git", dino_dir, "GroundingDINO")
-# launch.run(f"{launch.python} -m pip install -e {dino_dir}")
-launch.git_clone()

@@ -7,10 +7,10 @@ from modules import scripts, shared
 from modules.devices import device, torch_gc, cpu
 
 # Grounding DINO
-import GroundingDINO.groundingdino.datasets.transforms as T
-from GroundingDINO.groundingdino.models import build_model
-from GroundingDINO.groundingdino.util.slconfig import SLConfig
-from GroundingDINO.groundingdino.util.utils import clean_state_dict
+import groundingdino.datasets.transforms as T
+from groundingdino.models import build_model
+from groundingdino.util.slconfig import SLConfig
+from groundingdino.util.utils import clean_state_dict
 
 
 dino_model_cache = OrderedDict()
@@ -21,12 +21,12 @@ dino_model_info = {
     "repo_id": "ShilongLiu/GroundingDINO",
     "GroundingDINO_SwinT_OGC (694MB)": {
         "checkpoint": "groundingdino_swint_ogc.pth",
-        "config": os.path.join(scripts.basedir(), "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"),
-        "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swint_ogc.pth"
+        "config": os.path.join(dino_model_dir, "GroundingDINO_SwinT_OGC.py"),
+        "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swint_ogc.pth",
     },
     "GroundingDINO_SwinB (938MB)": {
         "checkpoint": "groundingdino_swinb_cogcoor.pth",
-        "config": os.path.join(scripts.basedir(), "GroundingDINO/groundingdino/config/GroundingDINO_SwinB.cfg.py"),
+        "config": os.path.join(dino_model_dir, "GroundingDINO_SwinB.cfg.py"),
         "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swinb_cogcoor.pth"
     },
 }
