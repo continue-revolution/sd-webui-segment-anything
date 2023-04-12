@@ -13,10 +13,14 @@ from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc, cpu
 from segment_anything import SamPredictor, sam_model_registry
-
+from modules.paths import models_path
 
 model_cache = OrderedDict()
-sam_model_dir = os.path.join(scripts.basedir(), "models/sam")
+
+scripts_sam_model_dir = os.path.join(scripts.basedir(), "models/sam") 
+sd_sam_model_dir = os.path.join(models_path, "sam")
+sam_model_dir = sd_sam_model_dir if os.path.exists(sd_sam_model_dir) else scripts_sam_model_dir 
+
 model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
     os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
 
