@@ -5,7 +5,7 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 ## News
 
 - `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
-- `2023/04/12`: [Feature] Experimental [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. The current implementation is **VERY** unstable. I recommend waiting until it is merged into master branch to use it.
+- `2023/04/13`: [Feature] Experimental [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. The full featured GroundingDINO support is still under development
 
 ## Plan
 
@@ -13,10 +13,10 @@ Thanks for suggestions from [GitHub Issues](https://github.com/continue-revoluti
 
 - [x] Support mask expansion
 - [ ] Support text->detection->segmentation from [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything/) and merge to master branch
-- [ ] Support API as mentioned in #15
-- [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
-- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet)
 - [ ] Batch process to support LoRA/LyCORIS training
+- [ ] Support API as mentioned in #15
+- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet)
+- [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
 
 ## Update your WebUI version
 
