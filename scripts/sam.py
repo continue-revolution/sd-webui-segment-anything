@@ -113,7 +113,6 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     point_coords = np.array(positive_points + negative_points)
     point_labels = np.array([1] * len(positive_points) + [0] * len(negative_points))
 
-    # Otherwise, at most one box applied with the largest logit
     box = boxes_filt[0].numpy() if boxes_filt is not None else None
     masks, _, _ = predictor.predict(
         point_coords=point_coords if len(point_coords) > 0 else None,
