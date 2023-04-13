@@ -12,11 +12,14 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
 
 - [x] Support mask expansion
-- [ ] Support text->detection->segmentation from [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything/) and merge to master branch
-- [ ] Batch process to support LoRA/LyCORIS training
-- [ ] Support API as mentioned in #15
-- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet)
+- [ ] [Developing] Support text->detection->segmentation from [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything/), with batch process to support LoRA/LyCORIS training, and merge to master branch
+- [ ] [Developing] Support API as mentioned in #15
+- [ ] Support automatic mask generation for hierarchical image segmentation and SD animation
+- [ ] Support semantic segmentation for batch process, ControlNet segmentation and SD animation
+- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet) inpainting and segmentation
 - [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
+
+Not all plans may ultimately be implemented. Some ideas might not work and be abandoned. Support for old commits has low priority, so I would encourage you to update your WebUI as soon as you can.
 
 ## Update your WebUI version
 
