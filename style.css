@@ -7,3 +7,13 @@
 #sam_run_button:hover {
    background:  #b4c0cc;
 }
+
+#dino_run_button {
+    position: absolute;
+    display: none;
+    width: 100%;
+}
+
+#dino_run_button:hover {
+   background:  #b4c0cc;
+}

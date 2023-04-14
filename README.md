@@ -1,6 +1,30 @@
 # Segment Anything for Stable Diffusion WebUI
 
-This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) to do stable diffusion inpainting.
+This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) and [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) to do stable diffusion inpainting.
+
+## News
+
+- `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
+- `2023/04/14`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check it out and use text prompt to automatically generate masks! Also use `Batch Process` tab to get LoRA/LyCORIS training set! Note that when you firstly initiate WebUI you may need to wait some time for GroundingDINO to be built. Also make sure that you have access to GitHub on your terminal, otherwise you may need to install manually.
+
+## Plan
+
+Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
+
+- [ ] [Developing] Support API as mentioned in [#15](https://github.com/continue-revolution/sd-webui-segment-anything/issues/15)
+- [ ] Support color inpainting as mentioned in [#21](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22)
+- [ ] Support automatic mask generation for hierarchical image segmentation and SD animation
+- [ ] Support semantic segmentation for batch process, ControlNet segmentation and SD animation
+- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet) inpainting and segmentation
+- [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
+
+Not all plans may ultimately be implemented. Some ideas might not work and be abandoned. Support for old commits has low priority, so I would encourage you to update your WebUI as soon as you can.
+
+## Update your WebUI version
+
+If you are unable to add dot, observe [list index out of range](https://github.com/continue-revolution/sd-webui-segment-anything/issues/6) error on your terminal, or any other error, the most probable reason is that your WebUI is outdated (such as you are using this commitment: `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`).
+
+In most cases, updating your WebUI can solve your problem. Before you submit your issue and before I release support for some old version of WebUI, I ask that you firstly check your version of your WebUI.
 
 ## News
 
@@ -40,17 +64,29 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 
 ### Step 3:
 
-- Launch webui and switch to img2img mode. 
-- Upload your image and **add prompts on the image (MUST)**. Left click for positive prompt (black dot), right click for negative prompt (red dot), left click any dot again to cancel the prompt. If you forgot to add prompts, there will be exceptions on your terminal.
-- Click `Preview Segmentation` button
+- Launch webui and switch to img2img mode.
+
+#### Single Image
+- Upload your image
+- Optionally add point prompts on the image. Left click for positive point prompt (black dot), right click for negative point prompt (red dot), left click any dot again to cancel the prompt. You must add point prompt if you do not wish to use GroundingDINO.
+- Optionally check `Enable GroundingDINO`, select GroundingDINO model you want, write text prompt and pick a box threshold. You must write text prompt if you do not wish to use point prompts. Note that GroundingDINO models will be automatically downloaded from [HuggingFace](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main). If your terminal cannot visit HuggingFace, please manually download the model and put it under `${sd-webui-sam}/models/grounding-dino`.
+- Optionally enable previewing GroundingDINO bounding box and click `Generate bounding box`. You must write text prompt to preview bounding box. After you see the boxes with number marked on the left corner, uncheck all the boxes you do not want. If you uncheck all boxes, you will have to add point prompts to generate masks.
+- Click `Preview Segmentation` button. Due to the limitation of SAM, if there are multiple bounding boxes, your point prompts will not take effect when generating masks.
 - Choose your favorite segmentation and check `Copy to Inpaint Upload`
 - Optionally check `Expand Mask` and specify the amount, then click `Update Mask`
-- Switch to `Inpaint upload`. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
+- Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
+
+#### Batch Process
+- Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images. The source directory should only contain images.
+- `Output per image` gives you a choice on configurating the number of masks per bounding box. I would highly recommend choosing 3, since some mask might be wierd.
+- `save mask` gives you a choice to save the black & white mask and `Save original image with mask and bounding box` enables you to save image+mask+bounding_box.
+- Click `Start batch process` and wait. If you see "Done" below this button, you are all set.
 
 ### Demo
 
-https://user-images.githubusercontent.com/63914308/230916163-af661008-5a50-496e-8b79-8be7f193f9e9.mp4
+Update: Demo of GroundingDINO + Segment Anything coming soon!
 
+https://user-images.githubusercontent.com/63914308/230916163-af661008-5a50-496e-8b79-8be7f193f9e9.mp4
 
 ## Contribute
 
