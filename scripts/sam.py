@@ -72,7 +72,9 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
         mask_image, binary_img = dilate_mask(binary_img, dilation_amt)
     
     blended_image = Image.fromarray(show_masks(np.array(input_image), binary_img.astype(np.bool_)[None, ...]))
-    return [blended_image, mask_image]
+    matted_image = np.array(input_image)
+    matted_image[~binary_img] = np.array([0, 0, 0, 0])
+    return [blended_image, mask_image, Image.fromarray(matted_image)]
 
 def clear_cache():
     clear_sam_cache()
@@ -186,9 +188,9 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         mask_images.append(Image.fromarray(blended_image))
         image_np_copy = copy.deepcopy(image_np)
         image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
-        matted_images.append(image_np_copy)
+        matted_images.append(Image.fromarray(image_np_copy))
 
-    return mask_images + masks_gallery
+    return mask_images + masks_gallery + matted_images
 
 
 def dino_predict(sam_model_name, input_image, dino_model_name, text_prompt, box_threshold):
@@ -213,7 +215,7 @@ def dino_predict(sam_model_name, input_image, dino_model_name, text_prompt, box_
     return Image.fromarray(show_boxes(image_np, boxes_filt, show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice)
 
 def dino_batch_process(
-    batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold,
+    batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
     dino_batch_source_dir, dino_batch_dest_dir,
     dino_batch_output_per_image, dino_batch_save_mask, dino_batch_save_image_with_mask):
     if batch_text_prompt is None or batch_text_prompt == "":
@@ -222,8 +224,9 @@ def dino_batch_process(
     sam = init_sam_model(batch_sam_model_name)
     predictor = SamPredictor(sam)
     
-    for image_index, input_image_file in enumerate(glob.glob(os.path.join(dino_batch_source_dir, "*"))):
-        print(f"processing {image_index} {input_image_file}")
+    all_files = glob.glob(os.path.join(dino_batch_source_dir, "*"))
+    for image_index, input_image_file in enumerate(all_files):
+        print(f"processing {image_index}/{len(all_files)} {input_image_file}")
         input_image = Image.open(input_image_file).convert("RGBA")
         image_np = np.array(input_image)
         image_np_rgb = image_np[..., :3]
@@ -246,12 +249,13 @@ def dino_batch_process(
 
         for idx, mask in enumerate(masks):
             blended_image = show_masks(show_boxes(image_np, boxes), mask)
+            _, merged_mask = dilate_mask(np.any(mask, axis=0), batch_dilation_amt)
             image_np_copy = copy.deepcopy(image_np)
-            image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+            image_np_copy[~merged_mask] = np.array([0, 0, 0, 0])
             output_image = Image.fromarray(image_np_copy)
             output_image.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_output{ext}"))
             if dino_batch_save_mask:
-                output_mask = Image.fromarray(np.any(mask, axis=0))
+                output_mask = Image.fromarray(merged_mask)
                 output_mask.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_mask{ext}"))
             if dino_batch_save_image_with_mask:
                 output_blend = Image.fromarray(blended_image)
@@ -332,8 +336,8 @@ class Script(scripts.Script):
                             
                         dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask", elem_id="dilation_enable_checkbox")
                         with gr.Column(visible=False) as dilation_column:
-                            dilation_amt = gr.Slider(minimum=0, maximum=100, default=30, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
-                            expanded_mask_image = gr.Gallery(label="Expanded Mask", elem_id="sam_expanded_mask").style(grid=2)
+                            dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
+                            expanded_mask_image = gr.Gallery(label="Expanded Mask", elem_id="sam_expanded_mask").style(grid=3)
                             update_mask_button = gr.Button(value="Update Mask", elem_id="update_mask_button")
                         
                         switch = gr.Button(value="Switch to Inpaint Upload")
@@ -355,6 +359,8 @@ class Script(scripts.Script):
 
                     batch_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
                     
+                    batch_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)", elem_id="batch_dino_dilation_amt")
+                    
                     dino_batch_source_dir = gr.Textbox(label="Source directory")
                     dino_batch_dest_dir = gr.Textbox(label="Destination directory")
                     with gr.Row():
@@ -367,7 +373,7 @@ class Script(scripts.Script):
                     dino_batch_progress = gr.Text(value="", show_label=False)
                     dino_batch_run_button.click(
                         fn=dino_batch_process,
-                        inputs=[batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold,
+                        inputs=[batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
                                 dino_batch_source_dir, dino_batch_dest_dir,
                                 dino_batch_output_per_image, dino_batch_save_mask,
                                 dino_batch_save_image_with_mask],

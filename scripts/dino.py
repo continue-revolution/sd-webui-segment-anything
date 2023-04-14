@@ -20,7 +20,6 @@ dino_model_dir = os.path.join(scripts.basedir(), "models/grounding-dino")
 dino_model_list = [
     "GroundingDINO_SwinT_OGC (694MB)", "GroundingDINO_SwinB (938MB)"]
 dino_model_info = {
-    "repo_id": "ShilongLiu/GroundingDINO",
     "GroundingDINO_SwinT_OGC (694MB)": {
         "checkpoint": "groundingdino_swint_ogc.pth",
         "config": os.path.join(dino_model_dir, "GroundingDINO_SwinT_OGC.py"),
