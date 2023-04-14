@@ -1,6 +1,7 @@
 import gc
 import os
 import copy
+import glob
 import numpy as np
 from PIL import Image
 import torch
@@ -178,6 +179,58 @@ def dino_predict(sam_model_name, input_image, dino_model_name, text_prompt, box_
     
     boxes_choice = [str(i) for i in range(boxes_filt.shape[0])]
     return Image.fromarray(show_boxes(image_np, boxes_filt, show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice)
+
+def dino_batch_process(
+    batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold,
+    dino_batch_source_dir, dino_batch_dest_dir,
+    dino_batch_output_per_image, dino_batch_save_mask, dino_batch_save_image_with_mask):
+    if batch_text_prompt is None or batch_text_prompt == "":
+        return "Please add text prompts to generate masks"
+    print("Start batch processing")
+    sam = init_sam_model(batch_sam_model_name)
+    predictor = SamPredictor(sam)
+    
+    for image_index, input_image_file in enumerate(glob.glob(os.path.join(dino_batch_source_dir, "*"))):
+        print(f"processing {image_index} {input_image_file}")
+        input_image = Image.open(input_image_file).convert("RGBA")
+        image_np = np.array(input_image)
+        image_np_rgb = image_np[..., :3]
+
+        boxes_filt = dino_predict_internal(input_image, batch_dino_model_name, batch_text_prompt, batch_box_threshold)
+
+        predictor.set_image(image_np_rgb)
+        boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
+        masks, _, _ = predictor.predict_torch(
+            point_coords=None,
+            point_labels=None,
+            boxes=boxes.to(device),
+            multimask_output=(dino_batch_output_per_image == 1),
+        )
+        
+        masks = masks.permute(1, 0, 2, 3).cpu().numpy()
+        boxes = boxes.cpu().numpy().astype(int)
+        
+        filename, ext = os.path.splitext(os.path.basename(input_image_file))
+
+        for idx, mask in enumerate(masks):
+            blended_image = show_masks(show_boxes(image_np, boxes), mask)
+            image_np_copy = copy.deepcopy(image_np)
+            image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+            output_image = Image.fromarray(image_np_copy)
+            output_image.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_output{ext}"))
+            if dino_batch_save_mask:
+                output_mask = Image.fromarray(np.any(mask, axis=0))
+                output_mask.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_mask{ext}"))
+            if dino_batch_save_image_with_mask:
+                output_blend = Image.fromarray(blended_image)
+                output_blend.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_blend{ext}"))
+    
+    if shared.cmd_opts.lowvram:
+        sam.to(cpu)
+    gc.collect()
+    torch_gc()
+    
+    return "Done"
     
 
 class Script(scripts.Script):
@@ -190,56 +243,95 @@ class Script(scripts.Script):
 
     def ui(self, is_img2img):
         with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion'), visible=is_img2img):
-            with gr.Column():
-                gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
-                with gr.Row():
-                    sam_model_name = gr.Dropdown(label="SAM Model", elem_id="sam_model", choices=sam_model_list,
-                                            value=sam_model_list[0] if len(sam_model_list) > 0 else None)
-                    refresh_models = ToolButton(value=refresh_symbol)
-                    refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
-                input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
-                                       show_label=False, source="upload", type="pil", image_mode="RGBA")
-                remove_dots = gr.Button(value="Remove all point prompts")
-                dummy_component = gr.Label(visible=False)
+            with gr.Tabs():
+                with gr.TabItem(label="Single Image"):
+                    with gr.Column():
+                        gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
+                        with gr.Row():
+                            sam_model_name = gr.Dropdown(label="SAM Model", elem_id="sam_model", choices=sam_model_list,
+                                                    value=sam_model_list[0] if len(sam_model_list) > 0 else None)
+                            refresh_models = ToolButton(value=refresh_symbol)
+                            refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+                        input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
+                                            show_label=False, source="upload", type="pil", image_mode="RGBA")
+                        remove_dots = gr.Button(value="Remove all point prompts")
+                        dummy_component = gr.Label(visible=False)
 
-                gr.HTML(value="<p>GroundingDINO + Segment Anything can achieve [text prompt]->[object detection]->[segmentation]</p>")
-                dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id="dino_enable_checkbox")
-                with gr.Column(visible=False) as dino_column:
-                    gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
-                    dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", 
-                                                  elem_id="dino_model", choices=dino_model_list, value=dino_model_list[0])
+                        gr.HTML(value="<p>GroundingDINO + Segment Anything can achieve [text prompt]->[object detection]->[segmentation]</p>")
+                        dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id="dino_enable_checkbox")
+                        with gr.Column(visible=False) as dino_column:
+                            gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
+                            dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", 
+                                                        elem_id="dino_model", choices=dino_model_list, value=dino_model_list[0])
 
-                    text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id="dino_text_prompt")
-                    text_prompt.change(fn=lambda _: None, inputs=[dummy_component], outputs=None, _js="registerDinoTextObserver")
+                            text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id="dino_text_prompt")
+                            text_prompt.change(fn=lambda _: None, inputs=[dummy_component], outputs=None, _js="registerDinoTextObserver")
 
-                    box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
+                            box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
 
-                    dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id="dino_preview_checkbox")
-                    with gr.Column(visible=False) as dino_preview:
-                        dino_preview_boxes = gr.Image(label="Image for GroundingDINO", elem_id="dino_box_output",
-                                                      show_label=False, type="pil", image_mode="RGBA")
-                        with gr.Row(elem_id="dino_generate_box", elem_classes="generate-box"):
-                            gr.Button(value="Add text prompt to generate detection box", elem_id="dino_no_button")
-                            dino_preview_boxes_button = gr.Button(value="Generate detection box", elem_id="dino_run_button")
-                        dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id="dino_preview_boxes_selection")
-                        dino_preview_boxes_selection.change(fn=lambda _: None, inputs=[dino_preview_boxes_selection], outputs=None, _js="onChangeDinoPreviewBoxesSelection")
+                            dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id="dino_preview_checkbox")
+                            with gr.Column(visible=False) as dino_preview:
+                                dino_preview_boxes = gr.Image(label="Image for GroundingDINO", elem_id="dino_box_output",
+                                                            show_label=False, type="pil", image_mode="RGBA")
+                                with gr.Row(elem_id="dino_generate_box", elem_classes="generate-box"):
+                                    gr.Button(value="Add text prompt to generate detection box", elem_id="dino_no_button")
+                                    dino_preview_boxes_button = gr.Button(value="Generate detection box", elem_id="dino_run_button")
+                                dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id="dino_preview_boxes_selection")
+                                dino_preview_boxes_selection.change(fn=lambda _: None, inputs=[dino_preview_boxes_selection], outputs=None, _js="onChangeDinoPreviewBoxesSelection")
 
-                        dino_preview_boxes_button.click(
-                            fn=dino_predict,
-                            _js="submit_dino",
-                            inputs=[sam_model_name, input_image, dino_model_name, text_prompt, box_threshold],
-                            outputs=[dino_preview_boxes, dino_preview_boxes_selection]
-                        )
+                                dino_preview_boxes_button.click(
+                                    fn=dino_predict,
+                                    _js="submit_dino",
+                                    inputs=[sam_model_name, input_image, dino_model_name, text_prompt, box_threshold],
+                                    outputs=[dino_preview_boxes, dino_preview_boxes_selection]
+                                )
 
-                mask_image = gr.Gallery(label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
+                        mask_image = gr.Gallery(label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
 
-                with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
-                    gr.Button(value="Add dot prompt or enable GroundingDINO with text prompts to preview segmentation", elem_id="sam_no_button")
-                    run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
-                with gr.Row():
-                    enabled = gr.Checkbox(value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
-                    chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
-                switch = gr.Button(value="Switch to Inpaint Upload")
+                        with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
+                            gr.Button(value="Add dot prompt or enable GroundingDINO with text prompts to preview segmentation", elem_id="sam_no_button")
+                            run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
+                        with gr.Row():
+                            enabled = gr.Checkbox(value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
+                            chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
+                        switch = gr.Button(value="Switch to Inpaint Upload")
+                        
+                with gr.TabItem(label="Batch Process"):
+                    gr.HTML(value="<p>You may configurate the following items and generate masked image for all images under a directory. This mode is designed for generating LoRA/LyCORIS training set.</p>")
+                    gr.HTML(value="<p>The current workflow is [text prompt]->[object detection]->[segmentation]. Semantic segmentation support is coming soon!</p>")
+                    
+                    with gr.Row():
+                        batch_sam_model_name = gr.Dropdown(label="SAM Model", elem_id="batch_sam_model", choices=sam_model_list,
+                                                           value=sam_model_list[0] if len(sam_model_list) > 0 else None)
+                        batch_refresh_models = ToolButton(value=refresh_symbol)
+                        batch_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+                    
+                    batch_dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)",
+                                                        elem_id="batch_dino_model", choices=dino_model_list, value=dino_model_list[0])
+                    
+                    batch_text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id="batch_dino_text_prompt")
+
+                    batch_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
+                    
+                    dino_batch_source_dir = gr.Textbox(label="Source directory")
+                    dino_batch_dest_dir = gr.Textbox(label="Destination directory")
+                    with gr.Row():
+                        dino_batch_output_per_image = gr.Radio(
+                            choices=["1", "3"], value="1", type="index", label="Output per image: ")
+                        dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
+                        dino_batch_save_image_with_mask = gr.Checkbox(
+                            value=True, label="Save original image with mask and detection box")
+                    dino_batch_run_button = gr.Button(value="Start batch process")
+                    dino_batch_progress = gr.Text(value="", show_label=False)
+                    dino_batch_run_button.click(
+                        fn=dino_batch_process,
+                        inputs=[batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold,
+                                dino_batch_source_dir, dino_batch_dest_dir,
+                                dino_batch_output_per_image, dino_batch_save_mask,
+                                dino_batch_save_image_with_mask],
+                        outputs=[dino_batch_progress]
+                    )
+
                 unload = gr.Button(value="Unload all models from memory")
 
             run_button.click(
