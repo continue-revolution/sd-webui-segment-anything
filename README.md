@@ -5,13 +5,13 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 ## News
 
 - `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
-- `2023/04/13`: [Feature] Preview version of [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. The full featured GroundingDINO support is still under development.
+- `2023/04/14`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. However, since some people are not able to compile C++, we will have to delay the time when we release GroundingDINO support in master branch.
 
 ## Plan
 
 Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
 
-- [ ] [Developing] Support text->detection->segmentation from [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything/), with batch process to support LoRA/LyCORIS training, and merge to master branch
+- [ ] Find the cleanest way to install GroundingDINO and update master branch
 - [ ] [Developing] Support API as mentioned in #15
 - [ ] Support automatic mask generation for hierarchical image segmentation and SD animation
 - [ ] Support semantic segmentation for batch process, ControlNet segmentation and SD animation
