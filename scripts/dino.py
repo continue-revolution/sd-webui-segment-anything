@@ -1,5 +1,7 @@
 import os
 import gc
+import cv2
+import copy
 import torch
 from collections import OrderedDict
 
@@ -30,6 +32,23 @@ dino_model_info = {
         "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swinb_cogcoor.pth"
     },
 }
+
+
+def show_boxes(image_np, boxes, color=(255, 0, 0, 255), thickness=2, show_index=False):
+    if boxes is None:
+        return image_np
+
+    image = copy.deepcopy(image_np)
+    for idx, box in enumerate(boxes):
+        x, y, w, h = box
+        cv2.rectangle(image, (x, y), (x+w, y+h), color, thickness)
+        if show_index:
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            text = str(idx)
+            textsize = cv2.getTextSize(text, font, 1, 2)[0]
+            cv2.putText(image, text, (x, y+textsize[1]), font, 1, color, thickness)
+
+    return image
 
 
 def clear_dino_cache():
@@ -93,7 +112,7 @@ def get_grounding_output(model, image, caption, box_threshold):
     return boxes_filt.cpu()
 
 
-def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
+def dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold):
     print("Running GroundingDINO Inference")
     dino_image = load_dino_image(input_image.convert("RGB"))
     dino_model = load_dino_model(dino_model_name)

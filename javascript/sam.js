@@ -18,9 +18,15 @@ function getRealCoordinate(image, x1, y1) {
 
 function changeRunButton() {
     const sam_run_button = gradioApp().getElementById("sam_run_button");
-    const mode = (samHasImageInput() && (samCanSubmit() || dinoCanSubmit())) ? "block" : "none";
-    if (sam_run_button && sam_run_button.style.display != mode) {
-        sam_run_button.style.display = mode;
+    const sam_mode = (samHasImageInput() && (samCanSubmit() || (dinoCanSubmit() && dinoPreviewCanSubmit()))) ? "block" : "none";
+    if (sam_run_button && sam_run_button.style.display != sam_mode) {
+        sam_run_button.style.display = sam_mode;
+    }
+
+    const dino_run_button = gradioApp().getElementById("dino_run_button");
+    const dino_mode = (samHasImageInput() && dinoCanSubmit()) ? "block" : "none";
+    if (dino_run_button && dino_run_button.style.display != dino_mode) {
+        dino_run_button.style.display = dino_mode;
     }
 }
 
@@ -65,14 +71,18 @@ function createDot(sam_image, image, coord, label) {
     }
 }
 
-function removeDots(parentDiv) {
-    [".sam_positive", ".sam_negative"].forEach(cls => {
-        const dots = parentDiv.querySelectorAll(cls);
-
-        dots.forEach(dot => {
-            dot.remove();
-        });
-    })
+function removeDots() {
+    const sam_image = gradioApp().getElementById("sam_input_image");
+    if (sam_image) {
+        [".sam_positive", ".sam_negative"].forEach(cls => {
+            const dots = sam_image.querySelectorAll(cls);
+    
+            dots.forEach(dot => {
+                dot.remove();
+            });
+        })
+    }
+    return arguments;
 }
 
 function create_submit_sam_args(args) {
@@ -83,6 +93,18 @@ function create_submit_sam_args(args) {
 
     res[res.length - 1] = null
 
+    return res
+}
+
+
+function submit_dino() {
+    res = []
+    for (var i = 0; i < arguments.length; i++) {
+        res.push(arguments[i])
+    }
+
+    res[res.length - 2] = null
+    res[res.length - 1] = null
     return res
 }
 
@@ -110,6 +132,19 @@ function submit_sam() {
     return res
 }
 
+function dinoPreviewCanSubmit() {
+    const dino_preview_enable_checkbox = gradioApp().getElementById("dino_preview_checkbox");
+    if (!dino_preview_enable_checkbox || 
+        (dino_preview_enable_checkbox.querySelector("input") &&
+        !dino_preview_enable_checkbox.querySelector("input").checked)) {
+        return true;
+    } else {
+        let dino_preview_selected = false;
+        gradioApp().getElementById("dino_preview_boxes_selection").querySelectorAll("input").forEach(element => dino_preview_selected = element.checked || dino_preview_selected);
+        return dino_preview_selected;
+    }
+}
+
 function dinoCanSubmit() {
     const dino_enable_checkbox = gradioApp().getElementById("dino_enable_checkbox")
     const dino_text_prompt = gradioApp().getElementById("dino_text_prompt")
@@ -130,6 +165,10 @@ function samHasImageInput() {
     return sam_image && sam_image.querySelector('img')
 }
 
+function onChangeDinoPreviewBoxesSelection() {
+    changeRunButton(arguments[0].length > 0)
+}
+
 prevImg = null
 
 onUiUpdate(() => {
@@ -137,7 +176,7 @@ onUiUpdate(() => {
     if (sam_image) {
         const image = sam_image.querySelector('img')
         if (image && prevImg != image.src) {
-            removeDots(sam_image);
+            removeDots();
             prevImg = image.src;
 
             image.addEventListener("click", event => {
@@ -160,7 +199,7 @@ onUiUpdate(() => {
             const observer = new MutationObserver(mutations => {
                 mutations.forEach(mutation => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'src' && mutation.target === image) {
-                        removeDots(sam_image);
+                        removeDots();
                         prevImg = image.src;
                     }
                 });
@@ -168,7 +207,7 @@ onUiUpdate(() => {
 
             observer.observe(image, { attributes: true });
         } else if (!image) {
-            removeDots(sam_image);
+            removeDots();
             prevImg = null;
         }
     }
