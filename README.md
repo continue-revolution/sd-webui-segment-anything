@@ -5,7 +5,7 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 ## News
 
 - `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
-- `2023/04/14`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check it out and use text prompt to automatically generate masks! Also use `Batch Process` tab to get LoRA/LyCORIS training set! Note that when you firstly initiate WebUI you may need to wait some time for GroundingDINO to be built. Also make sure that you have access to GitHub on your terminal, otherwise you may need to install manually.
+- `2023/04/14`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check it out and use text prompt to automatically generate masks! Also use `Batch Process` tab to get LoRA/LyCORIS training set! Note that when you firstly initiate WebUI you may need to wait some time for GroundingDINO to be built. Also make sure that you have access to GitHub on your terminal, otherwise you may need to install manually. `cd` to `${sd-webui-sam}/` and run `git checkout 99a0fe5` on the terminal to revert back to the previous version without GroundingDINO.
 
 ## Plan
 
