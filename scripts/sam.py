@@ -233,7 +233,9 @@ def dino_batch_process(
 
         for idx, mask in enumerate(masks):
             blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
-            _, merged_mask = dilate_mask(np.any(mask, axis=0), batch_dilation_amt)
+            merged_mask = np.any(mask, axis=0)
+            if batch_dilation_amt:
+                _, merged_mask = dilate_mask(merged_mask, batch_dilation_amt)
             image_np_copy = copy.deepcopy(image_np)
             image_np_copy[~merged_mask] = np.array([0, 0, 0, 0])
             output_image = Image.fromarray(image_np_copy)
