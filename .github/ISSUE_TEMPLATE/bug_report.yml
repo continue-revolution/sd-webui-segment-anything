@@ -7,9 +7,16 @@ body:
   - type: checkboxes
     attributes:
       label: Is there an existing issue for this?
-      description: Please search to see if an issue already exists for the bug you encountered, and that it hasn't been fixed in a recent build/commit.
+      description: Please search both open issues and closed issues to see if an issue already exists for the bug you encountered, and that it hasn't been fixed in a recent build/commit.
       options:
         - label: I have searched the existing issues and checked the recent builds/commits of both this extension and the webui
+          required: true
+  - type: checkboxes
+    attributes:
+      label: Have you updated WebUI and this extension to the newest version?
+      description: Most people cannot use this extension because they are using an outdated webui. Before I have time to look into the reason, I ask that you update your WebUI and re-try. The most updated WebUI at least works well for LoRA and ControlNet.
+      options:
+        - label: I have updated WebUI and this extension to the most up-to-date version
           required: true
   - type: markdown
     attributes:
@@ -47,7 +54,7 @@ body:
       description: Which commit of the extension are you running on? Please include the commit of both the extension and the webui (Do not write *Latest version/repo/commit*, as this means nothing and will have changed by the time we read your issue. Rather, copy the **Commit** link at the bottom of the UI, or from the cmd/terminal if you can't launch it.)
       value: |
         webui: 
-        controlnet: 
+        extension: 
     validations:
       required: true
   - type: dropdown
@@ -73,7 +80,7 @@ body:
     id: logs
     attributes:
       label: Console logs
-      description: Please provide **full** cmd/terminal logs from the moment you started UI to the end of it, after your bug happened. If it's very long, provide a link to pastebin or similar service.
+      description: Please provide the errors printed on your console log of your browser (type F12 and go to console) and your terminal, after your bug happened.
       render: Shell
     validations:
       required: true

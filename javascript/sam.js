@@ -48,6 +48,17 @@ function switchToInpaintUpload() {
     return arguments;
 }
 
+function immediatelyGenerate() {
+    const runButton = gradioApp().getElementById("sam_run_button");
+    if (runButton.style.display !== "none") {
+        runButton.click();
+
+    }
+}
+function isRealTimePreview() {
+    return gradioApp().querySelector("#sam_realtime_preview_checkbox input[type='checkbox']").checked;
+}
+
 function createDot(sam_image, image, coord, label) {
     const x = coord.x;
     const y = coord.y;
@@ -67,7 +78,19 @@ function createDot(sam_image, image, coord, label) {
         circle.addEventListener("click", e => {
             e.stopPropagation();
             circle.remove();
+            if (gradioApp().querySelectorAll(".sam_positive").length == 0 &&
+                gradioApp().querySelectorAll(".sam_negative").length == 0) {
+                disableRunButton();
+            } else {
+                if (isRealTimePreview()) {
+                    immediatelyGenerate();
+                }
+            }
         });
+        enableRunButton();
+        if (isRealTimePreview()) {
+            immediatelyGenerate();
+        }
     }
 }
 

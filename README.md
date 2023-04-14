@@ -26,6 +26,30 @@ If you are unable to add dot, observe [list index out of range](https://github.c
 
 In most cases, updating your WebUI can solve your problem. Before you submit your issue and before I release support for some old version of WebUI, I ask that you firstly check your version of your WebUI.
 
+## News
+
+- `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
+- `2023/04/14`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in [GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything/tree/GroundingDINO) branch. Master branch will be updated after I resolve the merge conflicts.
+
+## Plan
+
+Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
+
+- [x] Support text->detection->segmentation from [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything/), with batch process to support LoRA/LyCORIS training
+- [ ] [Developing] Support API as mentioned in #15
+- [ ] Support automatic mask generation for hierarchical image segmentation and SD animation
+- [ ] Support semantic segmentation for batch process, ControlNet segmentation and SD animation
+- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet) inpainting and segmentation
+- [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
+
+Not all plans may ultimately be implemented. Some ideas might not work and be abandoned. Support for old commits has low priority, so I would encourage you to update your WebUI as soon as you can.
+
+## Update your WebUI version
+
+If you are unable to add dot, observe [list index out of range](https://github.com/continue-revolution/sd-webui-segment-anything/issues/6) error on your terminal, or any other error, the most probable reason is that your WebUI is outdated (such as you are using this commitment: `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`).
+
+In most cases, updating your WebUI can solve your problem. Before you submit your issue and before I release support for some old version of WebUI, I ask that you firstly check your version of your WebUI.
+
 ## How to use
 
 ### Step 1:
@@ -63,7 +87,6 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 Update: Demo of GroundingDINO + Segment Anything coming soon!
 
 https://user-images.githubusercontent.com/63914308/230916163-af661008-5a50-496e-8b79-8be7f193f9e9.mp4
-
 
 ## Contribute
 
