@@ -50,13 +50,14 @@ function switchToInpaintUpload() {
 
 function immediatelyGenerate() {
     const runButton = gradioApp().getElementById("sam_run_button");
-    if (runButton.style.display !== "none") {
+    if (runButton && runButton.style.display !== "none") {
         runButton.click();
-
     }
 }
+
 function isRealTimePreview() {
-    return gradioApp().querySelector("#sam_realtime_preview_checkbox input[type='checkbox']").checked;
+    const realtime_preview = gradioApp().querySelector("#sam_realtime_preview_checkbox input[type='checkbox']");
+    return realtime_preview && realtime_preview.checked;
 }
 
 function createDot(sam_image, image, coord, label) {

@@ -71,7 +71,7 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
         # Convert the image to a binary numpy array
         mask_image, binary_img = dilate_mask(binary_img, dilation_amt)
     
-    blended_image = Image.fromarray(show_mask(np.array(input_image), binary_img.astype(np.bool_)))
+    blended_image = Image.fromarray(show_masks(np.array(input_image), binary_img.astype(np.bool_)[None, ...]))
     return [blended_image, mask_image]
 
 def clear_cache():
@@ -141,10 +141,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     print(f"Running SAM Inference {image_np_rgb.shape}")
     predictor = SamPredictor(sam)
     predictor.set_image(image_np_rgb)
-    
-    masks_gallery = []
-    mask_images = []
-    
+
     if dino_enabled and boxes_filt.shape[0] > 1:
         print(f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts disgarded.")
         boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
@@ -179,10 +176,17 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     torch_gc()
 
     print("Creating output image")
+    mask_images = []
+    masks_gallery = []
+    matted_images = []
+
     for mask in masks:
         blended_image = show_masks(show_boxes(image_np, boxes), mask)
         masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
         mask_images.append(Image.fromarray(blended_image))
+        image_np_copy = copy.deepcopy(image_np)
+        image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+        matted_images.append(image_np_copy)
 
     return mask_images + masks_gallery
 
@@ -320,7 +324,7 @@ class Script(scripts.Script):
                             gr.Button(value="Add dot prompt or enable GroundingDINO with text prompts to preview segmentation", elem_id="sam_no_button")
                             run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
                             
-                        gr.Checkbox(value=False, label="Preview automatically", elem_id="sam_realtime_preview_checkbox")
+                        gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id="sam_realtime_preview_checkbox")
                             
                         with gr.Row():
                             enabled = gr.Checkbox(value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
