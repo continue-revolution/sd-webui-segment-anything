@@ -127,7 +127,7 @@ def init_sam_model(sam_model_name):
 
 def sam_predict(sam_model_name, input_image, positive_points, negative_points,
                 dino_checkbox, dino_model_name, text_prompt, box_threshold,
-                dino_preview_checkbox, dino_preview_boxes_selection):
+                dino_preview_checkbox, dino_preview_boxes_selection, gui=True):
     print("Start SAM Processing")
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
@@ -143,24 +143,24 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     print(f"Running SAM Inference {image_np_rgb.shape}")
     predictor = SamPredictor(sam)
     predictor.set_image(image_np_rgb)
-
     if dino_enabled and boxes_filt.shape[0] > 1:
         print(f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts disgarded.")
-        transformed_boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
+        boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
         masks, _, _ = predictor.predict_torch(
             point_coords=None,
             point_labels=None,
-            boxes=transformed_boxes.to(device),
+            boxes=boxes.to(device),
             multimask_output=True,
         )
         
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
+        boxes = boxes.cpu().numpy().astype(int)    
     else:
         print(f"SAM inference with {0 if boxes_filt is None else boxes_filt.shape[0]} box, {len(positive_points)} positive prompts, {len(negative_points)} negative prompts.")
         point_coords = np.array(positive_points + negative_points)
         point_labels = np.array([1] * len(positive_points) + [0] * len(negative_points))
 
-        box = copy.deepcopy(boxes_filt[0].numpy()) if boxes_filt is not None and boxes_filt.shape[0] > 0 else None
+        box = boxes_filt[0].numpy() if boxes_filt is not None and boxes_filt.shape[0] > 0 else None
         masks, _, _ = predictor.predict(
             point_coords=point_coords if len(point_coords) > 0 else None,
             point_labels=point_labels if len(point_coords) > 0 else None,
@@ -169,6 +169,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         )
 
         masks = masks[:, None, ...]
+        boxes = predictor.transform.apply_boxes(box, image_np.shape[:2]).astype(int) if box is not None else None
 
     if shared.cmd_opts.lowvram:
         sam.to(cpu)
@@ -176,27 +177,44 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     torch_gc()
 
     print("Creating output image")
+
     mask_images = []
     masks_gallery = []
     matted_images = []
-    
-    boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
-    for mask in masks:
-        blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
+    if gui:
+      for mask in masks:
+          blended_image = show_masks(show_boxes(image_np, boxes), mask)
+          masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
+          mask_images.append(Image.fromarray(blended_image))
+          image_np_copy = copy.deepcopy(image_np)
+          image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+          matted_images.append(Image.fromarray(image_np_copy))
+    else:
+      for mask in masks:
         masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
-        mask_images.append(Image.fromarray(blended_image))
-        image_np_copy = copy.deepcopy(image_np)
-        image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
-        matted_images.append(Image.fromarray(image_np_copy))
-
     return mask_images + masks_gallery + matted_images
 
 
-def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
+def dino_predict(sam_model_name, input_image, dino_model_name, text_prompt, box_threshold):
     image_np = np.array(input_image)
-    boxes_filt = dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold).numpy()
+    image_np_rgb = image_np[..., :3]
+    boxes_filt = dino_predict_internal(
+        input_image, dino_model_name, text_prompt, box_threshold).numpy()
+
+    sam = init_sam_model(sam_model_name)
+
+    predictor = SamPredictor(sam)
+    predictor.set_image(image_np_rgb)
+    boxes_filt = predictor.transform.apply_boxes(
+        boxes_filt, image_np.shape[:2]).astype(int)
+    
+    if shared.cmd_opts.lowvram:
+        sam.to(cpu)
+    gc.collect()
+    torch_gc()
+    
     boxes_choice = [str(i) for i in range(boxes_filt.shape[0])]
-    return Image.fromarray(show_boxes(image_np, boxes_filt.astype(int), show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice)
+    return Image.fromarray(show_boxes(image_np, boxes_filt, show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice)
 
 def dino_batch_process(
     batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
@@ -218,24 +236,22 @@ def dino_batch_process(
         boxes_filt = dino_predict_internal(input_image, batch_dino_model_name, batch_text_prompt, batch_box_threshold)
 
         predictor.set_image(image_np_rgb)
-        transformed_boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
+        boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
         masks, _, _ = predictor.predict_torch(
             point_coords=None,
             point_labels=None,
-            boxes=transformed_boxes.to(device),
+            boxes=boxes.to(device),
             multimask_output=(dino_batch_output_per_image == 1),
         )
         
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
-        boxes_filt = boxes_filt.cpu().numpy().astype(int)
+        boxes = boxes.cpu().numpy().astype(int)
         
         filename, ext = os.path.splitext(os.path.basename(input_image_file))
 
         for idx, mask in enumerate(masks):
-            blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
-            merged_mask = np.any(mask, axis=0)
-            if batch_dilation_amt:
-                _, merged_mask = dilate_mask(merged_mask, batch_dilation_amt)
+            blended_image = show_masks(show_boxes(image_np, boxes), mask)
+            _, merged_mask = dilate_mask(np.any(mask, axis=0), batch_dilation_amt)
             image_np_copy = copy.deepcopy(image_np)
             image_np_copy[~merged_mask] = np.array([0, 0, 0, 0])
             output_image = Image.fromarray(image_np_copy)
@@ -304,7 +320,7 @@ class Script(scripts.Script):
                                 dino_preview_boxes_button.click(
                                     fn=dino_predict,
                                     _js="submit_dino",
-                                    inputs=[input_image, dino_model_name, text_prompt, box_threshold],
+                                    inputs=[sam_model_name, input_image, dino_model_name, text_prompt, box_threshold],
                                     outputs=[dino_preview_boxes, dino_preview_boxes_selection]
                                 )
 
