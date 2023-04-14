@@ -40,7 +40,7 @@ def show_boxes(image_np, boxes, color=(255, 0, 0, 255), thickness=2, show_index=
     image = copy.deepcopy(image_np)
     for idx, box in enumerate(boxes):
         x, y, w, h = box
-        cv2.rectangle(image, (x, y), (x+w, y+h), color, thickness)
+        cv2.rectangle(image, (x, y), (w, h), color, thickness)
         if show_index:
             font = cv2.FONT_HERSHEY_SIMPLEX
             text = str(idx)
