@@ -274,8 +274,8 @@ class Script(scripts.Script):
                                 dino_preview_boxes = gr.Image(label="Image for GroundingDINO", elem_id="dino_box_output",
                                                             show_label=False, type="pil", image_mode="RGBA")
                                 with gr.Row(elem_id="dino_generate_box", elem_classes="generate-box"):
-                                    gr.Button(value="Add text prompt to generate detection box", elem_id="dino_no_button")
-                                    dino_preview_boxes_button = gr.Button(value="Generate detection box", elem_id="dino_run_button")
+                                    gr.Button(value="Add text prompt to generate bounding box", elem_id="dino_no_button")
+                                    dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id="dino_run_button")
                                 dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id="dino_preview_boxes_selection")
                                 dino_preview_boxes_selection.change(fn=lambda _: None, inputs=[dino_preview_boxes_selection], outputs=None, _js="onChangeDinoPreviewBoxesSelection")
 
@@ -317,10 +317,10 @@ class Script(scripts.Script):
                     dino_batch_dest_dir = gr.Textbox(label="Destination directory")
                     with gr.Row():
                         dino_batch_output_per_image = gr.Radio(
-                            choices=["1", "3"], value="1", type="index", label="Output per image: ")
+                            choices=["1", "3"], value="3", type="index", label="Output per image: ")
                         dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
                         dino_batch_save_image_with_mask = gr.Checkbox(
-                            value=True, label="Save original image with mask and detection box")
+                            value=True, label="Save original image with mask and bounding box")
                     dino_batch_run_button = gr.Button(value="Start batch process")
                     dino_batch_progress = gr.Text(value="", show_label=False)
                     dino_batch_run_button.click(
