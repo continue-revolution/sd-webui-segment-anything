@@ -82,3 +82,8 @@ Disclaimer: I have not thoroughly tested this extension, so there might be bugs.
 If you encounter a bug, please submit a issue. Please at least provide your WebUI version, your extension version, your browser version, errors on your browser console log if there is any, error on your terminal log if there is any, to make sure that I can find a solution faster.
 
 I welcome any contribution. Please submit a pull request if you want to contribute
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=continue-revolution/sd-webui-segment-anything&type=Date)](https://star-history.com/#continue-revolution/sd-webui-segment-anything&Date)
+
