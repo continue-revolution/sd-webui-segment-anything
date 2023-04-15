@@ -18,6 +18,13 @@ body:
       options:
         - label: I have updated WebUI and this extension to the most up-to-date version
           required: true
+  - type: checkboxes
+    attributes:
+      label: Do you understand that you should go to https://github.com/IDEA-Research/Grounded-Segment-Anything/issues if you cannot install GroundingDINO?
+      description: We can do very little help to people who are unable to install GroundingDINO. You should submit an issue in GroundingDINO or Grounded-SAM repository.
+      options:
+        - label: My problem is not about installing GroundingDINO
+          required: true
   - type: markdown
     attributes:
       value: |
