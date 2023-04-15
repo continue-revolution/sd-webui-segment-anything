@@ -5,13 +5,13 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 ## News
 
 - `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
-- `2023/04/14`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check it out and use text prompt to automatically generate masks! Also use `Batch Process` tab to get LoRA/LyCORIS training set! Note that when you firstly initiate WebUI you may need to wait some time for GroundingDINO to be built. Also make sure that you have access to GitHub on your terminal, otherwise you may need to install manually. `cd` to `${sd-webui-sam}/` and run `git checkout 99a0fe5` on the terminal to revert back to the previous version without GroundingDINO.
+- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check [Use GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#use-groundingdino), [How to use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo) for more detail.
+- `2023/04/15`: [Feature] API support has been released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Usage](https://github.com/continue-revolution/sd-webui-segment-anything#api-usage) and [API Example Usage](https://github.com/continue-revolution/sd-webui-segment-anything#api-example-usage) for more detail.
 
 ## Plan
 
 Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
 
-- [ ] [Developing] Support API as mentioned in [#15](https://github.com/continue-revolution/sd-webui-segment-anything/issues/15)
 - [ ] Support color inpainting as mentioned in [#21](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22)
 - [ ] Support automatic mask generation for hierarchical image segmentation and SD animation
 - [ ] Support semantic segmentation for batch process, ControlNet segmentation and SD animation
@@ -25,6 +25,20 @@ Not all plans may ultimately be implemented. Some ideas might not work and be ab
 If you are unable to add dot, observe [list index out of range](https://github.com/continue-revolution/sd-webui-segment-anything/issues/6) error on your terminal, or any other error, the most probable reason is that your WebUI is outdated (such as you are using this commitment: `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`).
 
 In most cases, updating your WebUI can solve your problem. Before you submit your issue and before I release support for some old version of WebUI, I ask that you firstly check your version of your WebUI.
+
+## Use GroundingDINO
+
+We have supported GroundingDINO. It has the following functionality:
+- You can use text prompt to automatically generate masks
+- You can use point prompts with **ONE mask** to generate masks
+- You can go to `Batch Process` tab to cut out images and get LoRA/LyCORIS training set
+
+However, there are some existing problems with GroundingDINO:
+- GroundingDINO will be install when you firstly use GroundingDINO features, instead of when you initiate the WebUI. Make sure that your terminal can have access to GitHub. Otherwise you have to download manually.
+- Downloading GroundingDINO requires your device to compile C++, which might take a long time and be problematic. I honestly can do very little about such problem. Please go to [Grounded Segment Anything Issue](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and submit an issue there. If you submit an issue in my repository, I will redirect your issue there. Despite of this, you can still use this extension for point prompts->segmentation masks even if you cannot install GroundingDINO, don't worry.
+- If you want to use point prompts, SAM can at most accept one mask. In this case, my script will check if there are multiple masks. If multiple masks, my script will disgard all point prompts; otherwise all point prompts will be effective. You may always select one mask you want.
+
+For more detail, check [How to use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo).
 
 ## How to use
 

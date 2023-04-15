@@ -11,8 +11,7 @@ from modules.devices import device, torch_gc, cpu
 
 dino_model_cache = OrderedDict()
 dino_model_dir = os.path.join(scripts.basedir(), "models/grounding-dino")
-dino_model_list = [
-    "GroundingDINO_SwinT_OGC (694MB)", "GroundingDINO_SwinB (938MB)"]
+dino_model_list = ["GroundingDINO_SwinT_OGC (694MB)", "GroundingDINO_SwinB (938MB)"]
 dino_model_info = {
     "GroundingDINO_SwinT_OGC (694MB)": {
         "checkpoint": "groundingdino_swint_ogc.pth",
@@ -25,6 +24,8 @@ dino_model_info = {
         "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swinb_cogcoor.pth"
     },
 }
+
+dino_install_issue_text = "submit an issue to https://github.com/IDEA-Research/Grounded-Segment-Anything/issues."
 
 
 def install_goundingdino():
@@ -40,7 +41,7 @@ def install_goundingdino():
     except Exception:
         import traceback
         print(traceback.print_exc())
-        print("GroundingDINO install failed. Submit an issue to https://github.com/continue-revolution/sd-webui-segment-anything/issues.")
+        print(f"GroundingDINO install failed. Please {dino_install_issue_text}")
         return False
 
 

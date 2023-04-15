@@ -15,7 +15,7 @@ from modules.processing import StableDiffusionProcessingImg2Img
 from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
 from segment_anything import SamPredictor, sam_model_registry
-from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache
+from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
 
 
 sam_model_cache = OrderedDict()
@@ -142,9 +142,9 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             boxes_filt = boxes_filt[valid_indices]
         if not install_success:
             if len(positive_points) == 0 and len(negative_points) == 0:
-                return [], "GroundingDINO installment has failed. Check your terminal for more detail and submit an issue to https://github.com/continue-revolution/sd-webui-segment-anything/issues."
+                return [], f"GroundingDINO installment has failed. Check your terminal for more detail and {dino_install_issue_text}"
             else:
-                sam_predict_result += " However, GroundingDINO installment has failed. Your process automatically fall back to point prompt only. Check your terminal for more detail and submit an issue to https://github.com/continue-revolution/sd-webui-segment-anything/issues."
+                sam_predict_result += f" However, GroundingDINO installment has failed. Your process automatically fall back to point prompt only. Check your terminal for more detail and {dino_install_issue_text}"
 
     sam = init_sam_model(sam_model_name)
 
@@ -207,7 +207,7 @@ def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
     image_np = np.array(input_image)
     boxes_filt, install_success = dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold)
     if not install_success:
-        return None, gr.update(), gr.update(visible=True, value="GroundingDINO installment failed. Preview failed. See your terminal for more detail and submit an issue to https://github.com/continue-revolution/sd-webui-segment-anything/issues.")
+        return None, gr.update(), gr.update(visible=True, value=f"GroundingDINO installment failed. Preview failed. See your terminal for more detail and {dino_install_issue_text}")
     boxes_filt = boxes_filt.numpy()
     boxes_choice = [str(i) for i in range(boxes_filt.shape[0])]
     return Image.fromarray(show_boxes(image_np, boxes_filt.astype(int), show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice), gr.update(visible=False)
@@ -231,7 +231,7 @@ def dino_batch_process(
 
         boxes_filt, install_success = dino_predict_internal(input_image, batch_dino_model_name, batch_text_prompt, batch_box_threshold)
         if not install_success:
-            return "GroundingDINO installment failed. Batch processing failed. See your terminal for more detail and submit an issue to https://github.com/continue-revolution/sd-webui-segment-anything/issues."
+            return f"GroundingDINO installment failed. Batch processing failed. See your terminal for more detail and {dino_install_issue_text}"
 
         predictor.set_image(image_np_rgb)
         transformed_boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
