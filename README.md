@@ -5,8 +5,8 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 ## News
 
 - `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
-- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check [Use GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#use-groundingdino), [How to use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo) for more detail.
-- `2023/04/15`: [Feature] API support has been released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Usage](https://github.com/continue-revolution/sd-webui-segment-anything#api-usage) and [API Example Usage](https://github.com/continue-revolution/sd-webui-segment-anything#api-example-usage) for more detail.
+- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo) for more detail.
+- `2023/04/15`: [Feature] API support has been released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](https://github.com/continue-revolution/sd-webui-segment-anything#api-support) for more detail.
 
 ## Plan
 
@@ -26,7 +26,7 @@ If you are unable to add dot, observe [list index out of range](https://github.c
 
 In most cases, updating your WebUI can solve your problem. Before you submit your issue and before I release support for some old version of WebUI, I ask that you firstly check your version of your WebUI.
 
-## Use GroundingDINO
+## Note about GroundingDINO
 
 We have supported GroundingDINO. It has the following functionality:
 - You can use text prompt to automatically generate masks
@@ -38,9 +38,9 @@ However, there are some existing problems with GroundingDINO:
 - Downloading GroundingDINO requires your device to compile C++, which might take a long time and be problematic. I honestly can do very little about such problem. Please go to [Grounded Segment Anything Issue](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and submit an issue there. If you submit an issue in my repository, I will redirect your issue there. Despite of this, you can still use this extension for point prompts->segmentation masks even if you cannot install GroundingDINO, don't worry.
 - If you want to use point prompts, SAM can at most accept one mask. In this case, my script will check if there are multiple masks. If multiple masks, my script will disgard all point prompts; otherwise all point prompts will be effective. You may always select one mask you want.
 
-For more detail, check [How to use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo).
+For more detail, check [How to Use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo).
 
-## How to use
+## How to Use
 
 ### Step 1:
 
@@ -72,7 +72,7 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 - `save mask` gives you a choice to save the black & white mask and `Save original image with mask and bounding box` enables you to save image+mask+bounding_box.
 - Click `Start batch process` and wait. If you see "Done" below this button, you are all set.
 
-### Demo
+## Demo
 Point prompts demo
 
 https://user-images.githubusercontent.com/63914308/230916163-af661008-5a50-496e-8b79-8be7f193f9e9.mp4
@@ -88,6 +88,8 @@ Batch process image demo
 | Input Image | Output Image | Output Mask | Output Blend |
 | --- | --- | --- | --- |
 | ![Input Image](https://user-images.githubusercontent.com/63914308/232157678-fcaaf6b6-1805-49fd-91fa-8a722cc01c8a.png) | ![Output Image](https://user-images.githubusercontent.com/63914308/232157721-2754ccf2-b341-4b24-95f2-b75ac5b4fcd2.png) | ![Output Mask](https://user-images.githubusercontent.com/63914308/232157975-05de0b23-1225-4187-89b1-032c731b46eb.png) | ![Output Blend](https://user-images.githubusercontent.com/63914308/232158575-228f687c-8045-4079-bcf5-5a4dd0c8d7bd.png)
+
+## API Support
 
 ### API Usage
 
