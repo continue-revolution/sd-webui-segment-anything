@@ -8,12 +8,6 @@ from collections import OrderedDict
 from modules import scripts, shared
 from modules.devices import device, torch_gc, cpu
 
-# Grounding DINO
-import groundingdino.datasets.transforms as T
-from groundingdino.models import build_model
-from groundingdino.util.slconfig import SLConfig
-from groundingdino.util.utils import clean_state_dict
-
 
 dino_model_cache = OrderedDict()
 dino_model_dir = os.path.join(scripts.basedir(), "models/grounding-dino")
@@ -31,6 +25,23 @@ dino_model_info = {
         "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swinb_cogcoor.pth"
     },
 }
+
+
+def install_goundingdino():
+    import launch
+    if launch.is_installed("groundingdino"):
+        return True
+    try:
+        launch.run_pip(
+            f"install git+https://github.com/IDEA-Research/GroundingDINO",
+            f"sd-webui-segment-anything requirement: groundingdino")
+        print("GroundingDINO install success.")
+        return True
+    except Exception:
+        import traceback
+        print(traceback.print_exc())
+        print("GroundingDINO install failed. Submit an issue to https://github.com/continue-revolution/sd-webui-segment-anything/issues.")
+        return False
 
 
 def show_boxes(image_np, boxes, color=(255, 0, 0, 255), thickness=2, show_index=False):
@@ -64,6 +75,9 @@ def load_dino_model(dino_checkpoint):
             dino.to(device=device)
     else:
         clear_dino_cache()
+        from groundingdino.models import build_model
+        from groundingdino.util.slconfig import SLConfig
+        from groundingdino.util.utils import clean_state_dict
         args = SLConfig.fromfile(dino_model_info[dino_checkpoint]["config"])
         dino = build_model(args)
         checkpoint = torch.hub.load_state_dict_from_url(
@@ -77,6 +91,7 @@ def load_dino_model(dino_checkpoint):
 
 
 def load_dino_image(image_pil):
+    import groundingdino.datasets.transforms as T
     transform = T.Compose(
         [
             T.RandomResize([800], max_size=1333),
@@ -112,6 +127,9 @@ def get_grounding_output(model, image, caption, box_threshold):
 
 
 def dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold):
+    install_success = install_goundingdino()
+    if not install_success:
+        return None, False
     print("Running GroundingDINO Inference")
     dino_image = load_dino_image(input_image.convert("RGB"))
     dino_model = load_dino_model(dino_model_name)
@@ -127,4 +145,4 @@ def dino_predict_internal(input_image, dino_model_name, text_prompt, box_thresho
         boxes_filt[i][2:] += boxes_filt[i][:2]
     gc.collect()
     torch_gc()
-    return boxes_filt
+    return boxes_filt, True

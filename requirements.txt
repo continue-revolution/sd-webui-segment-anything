@@ -1,2 +1,1 @@
 segment_anything
-groundingdino

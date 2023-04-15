@@ -8,7 +8,6 @@ with open(req_file) as file:
     for lib in file:
         lib = lib.strip()
         if not launch.is_installed(lib):
-            if lib == "groundingdino":
-                lib = "git+https://github.com/IDEA-Research/GroundingDINO"
             launch.run_pip(
-                f"install {lib}", f"sd-webui-segment-anything requirement: {lib}")
+                f"install {lib}",
+                f"sd-webui-segment-anything requirement: {lib}")
