@@ -4,9 +4,9 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 
 ## News
 
-- `2023/04/12`: [Feature] Mask expansion enabled. Thanks [@jordan-barrett-jm](https://github.com/jordan-barrett-jm) for your great contribution!
-- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support with full feature released in master branch! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo) for more detail.
-- `2023/04/15`: [Feature] API support has been released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](https://github.com/continue-revolution/sd-webui-segment-anything#api-support) for more detail.
+- `2023/04/12`: [Feature] Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
+- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](#how-to-use) and [Demo](#demo) for more detail.
+- `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](#api-support) for more detail.
 
 ## Plan
 
@@ -38,7 +38,7 @@ However, there are some existing problems with GroundingDINO:
 - Downloading GroundingDINO requires your device to compile C++, which might take a long time and be problematic. I honestly can do very little about such problem. Please go to [Grounded Segment Anything Issue](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and submit an issue there. If you submit an issue in my repository, I will redirect your issue there. Despite of this, you can still use this extension for point prompts->segmentation masks even if you cannot install GroundingDINO, don't worry.
 - If you want to use point prompts, SAM can at most accept one mask. In this case, my script will check if there are multiple masks. If multiple masks, my script will disgard all point prompts; otherwise all point prompts will be effective. You may always select one mask you want.
 
-For more detail, check [How to Use](https://github.com/continue-revolution/sd-webui-segment-anything#how-to-use) and [Demo](https://github.com/continue-revolution/sd-webui-segment-anything#demo).
+For more detail, check [How to Use](#how-to-use) and [Demo](#demo).
 
 ## How to Use
 
@@ -109,7 +109,7 @@ The image-mask endpoint accepts a payload that includes your base64-encoded imag
 
 Below is an example of how to interface with the API using requests.
 
-#### API Example Usage
+#### API Example
 
 ```
 import base64
@@ -144,6 +144,8 @@ If you encounter a bug, please submit a issue. Please at least provide your WebU
 I welcome any contribution. Please submit a pull request if you want to contribute
 
 ## Star History
+
+Give me a star if you like this extension!
 
 [![Star History Chart](https://api.star-history.com/svg?repos=continue-revolution/sd-webui-segment-anything&type=Date)](https://star-history.com/#continue-revolution/sd-webui-segment-anything&Date)
 
