@@ -127,7 +127,7 @@ def init_sam_model(sam_model_name):
 
 def sam_predict(sam_model_name, input_image, positive_points, negative_points,
                 dino_checkbox, dino_model_name, text_prompt, box_threshold,
-                dino_preview_checkbox, dino_preview_boxes_selection):
+                dino_preview_checkbox, dino_preview_boxes_selection, gui=True):
     print("Start SAM Processing")
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
@@ -182,12 +182,13 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     
     boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
     for mask in masks:
-        blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
         masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
-        mask_images.append(Image.fromarray(blended_image))
-        image_np_copy = copy.deepcopy(image_np)
-        image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
-        matted_images.append(Image.fromarray(image_np_copy))
+        if gui:
+            blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
+            mask_images.append(Image.fromarray(blended_image))
+            image_np_copy = copy.deepcopy(image_np)
+            image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+            matted_images.append(Image.fromarray(image_np_copy))
 
     return mask_images + masks_gallery + matted_images
 
