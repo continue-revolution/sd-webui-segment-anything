@@ -1,6 +1,6 @@
 # Segment Anything for Stable Diffusion WebUI
 
-This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) and [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) to do stable diffusion inpainting.
+This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) and [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) to do stable diffusion inpainting and create LoRA/LyCORIS training set. If you want to cut out images, you are also recommended to use `Batch Process` functionality described [here](#batch-process).
 
 ## News
 
