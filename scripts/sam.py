@@ -246,6 +246,7 @@ def dino_batch_process(
         boxes_filt = boxes_filt.cpu().numpy().astype(int)
         
         filename, ext = os.path.splitext(os.path.basename(input_image_file))
+        ext = ".png" # JPEG not compatible with RGBA
 
         for idx, mask in enumerate(masks):
             blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
