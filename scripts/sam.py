@@ -59,11 +59,6 @@ def load_sam_model(sam_checkpoint):
     return sam
 
 
-def clear_sam_cache():
-    sam_model_cache.clear()
-    gc.collect()
-    torch_gc()
-
 def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     print("Dilation Amount: ", dilation_amt)
     mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
@@ -77,9 +72,22 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     matted_image[~binary_img] = np.array([0, 0, 0, 0])
     return [blended_image, mask_image, Image.fromarray(matted_image)]
 
+
+def clear_sam_cache():
+    sam_model_cache.clear()
+    gc.collect()
+    torch_gc()
+
 def clear_cache():
     clear_sam_cache()
     clear_dino_cache()
+
+
+def garbage_collect(sam):
+    if shared.cmd_opts.lowvram:
+        sam.to(cpu)
+    gc.collect()
+    torch_gc()
 
 
 def refresh_sam_models(*inputs):
@@ -142,9 +150,9 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             boxes_filt = boxes_filt[valid_indices]
         if not install_success:
             if len(positive_points) == 0 and len(negative_points) == 0:
-                return [], f"GroundingDINO installment has failed. Check your terminal for more detail and {dino_install_issue_text}"
+                return [], f"GroundingDINO installment has failed. Check your terminal for more detail and {dino_install_issue_text}. "
             else:
-                sam_predict_result += f" However, GroundingDINO installment has failed. Your process automatically fall back to point prompt only. Check your terminal for more detail and {dino_install_issue_text}"
+                sam_predict_result += f" However, GroundingDINO installment has failed. Your process automatically fall back to point prompt only. Check your terminal for more detail and {dino_install_issue_text}. "
 
     sam = init_sam_model(sam_model_name)
 
@@ -165,7 +173,12 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
     else:
-        sam_predict_status = f"SAM inference with {0 if boxes_filt is None else boxes_filt.shape[0]} box, {len(positive_points)} positive prompts, {len(negative_points)} negative prompts"
+        num_box = 0 if boxes_filt is None else boxes_filt.shape[0]
+        num_points = len(positive_points) + len(negative_points)
+        if num_box == 0 and num_points == 0:
+            garbage_collect(sam)
+            return [], "It seems that you are using a high box threshold with no point prompts. Please lower your box threshold and re-try."
+        sam_predict_status = f"SAM inference with {num_box} box, {len(positive_points)} positive prompts, {len(negative_points)} negative prompts"
         print(sam_predict_status)
         point_coords = np.array(positive_points + negative_points)
         point_labels = np.array([1] * len(positive_points) + [0] * len(negative_points))
@@ -180,10 +193,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
 
         masks = masks[:, None, ...]
 
-    if shared.cmd_opts.lowvram:
-        sam.to(cpu)
-    gc.collect()
-    torch_gc()
+    garbage_collect(sam)
 
     print("Creating output image")
     mask_images = []
@@ -215,17 +225,22 @@ def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
 def dino_batch_process(
     batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
     dino_batch_source_dir, dino_batch_dest_dir,
-    dino_batch_output_per_image, dino_batch_save_mask, dino_batch_save_image_with_mask):
+    dino_batch_output_per_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask):
     if batch_text_prompt is None or batch_text_prompt == "":
         return "Please add text prompts to generate masks"
     print("Start batch processing")
     sam = init_sam_model(batch_sam_model_name)
     predictor = SamPredictor(sam)
     
+    process_info = ""
     all_files = glob.glob(os.path.join(dino_batch_source_dir, "*"))
     for image_index, input_image_file in enumerate(all_files):
-        print(f"processing {image_index}/{len(all_files)} {input_image_file}")
-        input_image = Image.open(input_image_file).convert("RGBA")
+        print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
+        try:
+            input_image = Image.open(input_image_file).convert("RGBA")
+        except:
+            print(f"File {input_image_file} not image, skipped.")
+            continue
         image_np = np.array(input_image)
         image_np_rgb = image_np[..., :3]
 
@@ -233,6 +248,12 @@ def dino_batch_process(
         if not install_success:
             return f"GroundingDINO installment failed. Batch processing failed. See your terminal for more detail and {dino_install_issue_text}"
 
+        if boxes_filt is None or boxes_filt.shape[0] == 0:
+            msg = f"GroundingDINO generated 0 box for image {input_image_file}, please lower the box threshold if you want any segmentation for this image. "
+            print(msg)
+            process_info += (msg + "\n")
+            continue
+        
         predictor.set_image(image_np_rgb)
         transformed_boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
         masks, _, _ = predictor.predict_torch(
@@ -251,6 +272,8 @@ def dino_batch_process(
         for idx, mask in enumerate(masks):
             blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
             merged_mask = np.any(mask, axis=0)
+            if dino_batch_save_background:
+                merged_mask = ~merged_mask
             if batch_dilation_amt:
                 _, merged_mask = dilate_mask(merged_mask, batch_dilation_amt)
             image_np_copy = copy.deepcopy(image_np)
@@ -264,12 +287,8 @@ def dino_batch_process(
                 output_blend = Image.fromarray(blended_image)
                 output_blend.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_blend{ext}"))
     
-    if shared.cmd_opts.lowvram:
-        sam.to(cpu)
-    gc.collect()
-    torch_gc()
-    
-    return "Done"
+    garbage_collect(sam)
+    return process_info + "Done"
     
 
 class Script(scripts.Script):
@@ -371,6 +390,7 @@ class Script(scripts.Script):
                         dino_batch_output_per_image = gr.Radio(
                             choices=["1", "3"], value="3", type="index", label="Output per image: ")
                         dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
+                        dino_batch_save_background = gr.Checkbox(value=False, label="Save background instead of foreground")
                         dino_batch_save_image_with_mask = gr.Checkbox(
                             value=True, label="Save original image with mask and bounding box")
                     dino_batch_run_button = gr.Button(value="Start batch process")
@@ -379,7 +399,7 @@ class Script(scripts.Script):
                         fn=dino_batch_process,
                         inputs=[batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
                                 dino_batch_source_dir, dino_batch_dest_dir,
-                                dino_batch_output_per_image, dino_batch_save_mask,
+                                dino_batch_output_per_image, dino_batch_save_mask, dino_batch_save_background, 
                                 dino_batch_save_image_with_mask],
                         outputs=[dino_batch_progress]
                     )
