@@ -67,7 +67,7 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 - Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
 
 #### Batch Process
-- Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images. The source directory should only contain images.
+- Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images. **The source directory should only contain images**.
 - `Output per image` gives you a choice on configurating the number of masks per bounding box. I would highly recommend choosing 3, since some mask might be wierd.
 - `save mask` gives you a choice to save the black & white mask and `Save original image with mask and bounding box` enables you to save image+mask+bounding_box.
 - Click `Start batch process` and wait. If you see "Done" below this button, you are all set.
