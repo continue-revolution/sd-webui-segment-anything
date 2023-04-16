@@ -2,7 +2,7 @@ from fastapi import FastAPI, Body
 from io import BytesIO
 import base64
 from pydantic import BaseModel
-from typing import Any
+from typing import Any, Optional
 import asyncio
 import gradio as gr
 import os
@@ -22,6 +22,8 @@ def sam_api(_: gr.Blocks, app: FastAPI):
         image: str #base64 string containing image
         prompt: str
         box_threshold: float
+        padding: Optional[int] = 0
+        
 
     def pil_image_to_base64(img: Image.Image) -> str:
         buffered = BytesIO()
@@ -47,8 +49,9 @@ def sam_api(_: gr.Blocks, app: FastAPI):
                             payload.box_threshold,
                             None,
                             None,
-                            gui=False)
-
+                            gui=False)[0]
+        if payload.padding:
+            masks = [dilate_mask(mask, payload.padding)[0] for mask in masks]
         # Convert the final PIL image to a base64 string
         response = [{"image": pil_image_to_base64(mask)} for mask in masks]
 
