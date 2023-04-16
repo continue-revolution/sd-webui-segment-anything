@@ -109,7 +109,7 @@ The image-mask endpoint accepts a payload that includes your base64-encoded imag
 
 Below is an example of how to interface with the API using requests.
 
-#### API Example
+### API Example
 
 ```
 import base64
