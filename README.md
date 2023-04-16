@@ -117,6 +117,8 @@ import requests
 from PIL import Image
 from io import BytesIO
 
+url = "http://127.0.0.1:7860/sam-webui/image-mask"
+
 def image_to_base64(img_path: str) -> str:
     with open(img_path, "rb") as img_file:
         img_base64 = base64.b64encode(img_file.read()).decode()
@@ -125,7 +127,8 @@ def image_to_base64(img_path: str) -> str:
 payload = {
     "image": image_to_base64("IMAGE_FILE_PATH"),
     "prompt": "TEXT PROMPT",
-    "box_threshold": 0.3
+    "box_threshold": 0.3,
+    "padding": 30 #Optional param to pad masks
 }
 res = requests.post(url, json=payload)
 
