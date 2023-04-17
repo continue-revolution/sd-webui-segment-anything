@@ -301,7 +301,7 @@ def priorize_sam_scripts(is_img2img):
                 sam_idx = idx
             elif s.title() == "ControlNet":
                 cnet_idx = idx
-        if cnet_idx < sam_idx:
+        if cnet_idx is not None and sam_idx is not None and cnet_idx < sam_idx:
             scripts.scripts_img2img.alwayson_scripts[cnet_idx], scripts.scripts_img2img.alwayson_scripts[
                 sam_idx] = scripts.scripts_img2img.alwayson_scripts[sam_idx], scripts.scripts_img2img.alwayson_scripts[cnet_idx]
     else:
@@ -312,7 +312,7 @@ def priorize_sam_scripts(is_img2img):
                 sam_idx = idx
             elif s.title() == "ControlNet":
                 cnet_idx = idx
-        if cnet_idx < sam_idx:
+        if cnet_idx is not None and sam_idx is not None and cnet_idx < sam_idx:
             scripts.scripts_txt2img.alwayson_scripts[cnet_idx], scripts.scripts_txt2img.alwayson_scripts[
                 sam_idx] = scripts.scripts_txt2img.alwayson_scripts[sam_idx], scripts.scripts_txt2img.alwayson_scripts[cnet_idx]
 
@@ -334,8 +334,7 @@ class Script(scripts.Script):
                     with gr.Column():
                         gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
                         with gr.Row():
-                            sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list,
-                                                    value=sam_model_list[0] if len(sam_model_list) > 0 else None)
+                            sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
                             refresh_models = ToolButton(value=refresh_symbol)
                             refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
                         input_image = gr.Image(label="Image for Segment Anything", elem_id=f"{tab_prefix}input_image", show_label=False, source="upload", type="pil", image_mode="RGBA")
@@ -397,11 +396,10 @@ class Script(scripts.Script):
                         
                 with gr.TabItem(label="Batch Process"):
                     gr.HTML(value="<p>You may configurate the following items and generate masked image for all images under a directory. This mode is designed for generating LoRA/LyCORIS training set.</p>")
-                    gr.HTML(value="<p>The current workflow is [text prompt]->[object detection]->[segmentation]. Semantic segmentation support is coming soon!</p>")
+                    gr.HTML(value="<p>The current workflow is [text prompt]->[object detection]->[segmentation]. Semantic segmentation support is in Auto SAM panel.</p>")
                     
                     with gr.Row():
-                        batch_sam_model_name = gr.Dropdown(label="SAM Model", elem_id="batch_sam_model", choices=sam_model_list,
-                                                           value=sam_model_list[0] if len(sam_model_list) > 0 else None)
+                        batch_sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
                         batch_refresh_models = ToolButton(value=refresh_symbol)
                         batch_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
                     
