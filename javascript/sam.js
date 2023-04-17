@@ -1,4 +1,4 @@
-function getRealCoordinate(image, x1, y1) {
+function samGetRealCoordinate(image, x1, y1) {
     if (image.naturalHeight * (image.width / image.naturalWidth) <= image.height) {
         // width is filled, height has padding
         const scale = image.naturalWidth / image.width
@@ -16,26 +16,26 @@ function getRealCoordinate(image, x1, y1) {
     }
 }
 
-function changeRunButton() {
-    const sam_run_button = gradioApp().getElementById("sam_run_button");
+function samChangeRunButton() {
+    const sam_run_button = gradioApp().getElementById(samTabPrefix() + "run_button");
     const sam_mode = (samHasImageInput() && (samCanSubmit() || (dinoCanSubmit() && dinoPreviewCanSubmit()))) ? "block" : "none";
     if (sam_run_button && sam_run_button.style.display != sam_mode) {
         sam_run_button.style.display = sam_mode;
     }
 
-    const dino_run_button = gradioApp().getElementById("dino_run_button");
+    const dino_run_button = gradioApp().getElementById(samTabPrefix() + "dino_run_button");
     const dino_mode = (samHasImageInput() && dinoCanSubmit()) ? "block" : "none";
     if (dino_run_button && dino_run_button.style.display != dino_mode) {
         dino_run_button.style.display = dino_mode;
     }
 }
 
-function registerDinoTextObserver() {
-    const dino_text_prompt = gradioApp().getElementById("dino_text_prompt").querySelector("textarea")
+function dinoRegisterTextObserver() {
+    const dino_text_prompt = gradioApp().getElementById(samTabPrefix() + "dino_text_prompt").querySelector("textarea")
     const observer = new MutationObserver(mutations => {
         mutations.forEach(mutation => {
             if (mutation.target === dino_text_prompt) {
-                changeRunButton();
+                samChangeRunButton();
             }
         });
     });
@@ -48,57 +48,73 @@ function switchToInpaintUpload() {
     return arguments;
 }
 
-function immediatelyGenerate() {
-    const runButton = gradioApp().getElementById("sam_run_button");
+function samTabPrefix() {
+    const tabs = gradioApp().querySelector('#tabs');
+    if (tabs) {
+        const buttons = tabs.querySelectorAll('button');
+        if (buttons) {
+            if (buttons[0].className.includes("selected")) {
+                return "txt2img_sam_"
+            } else if (buttons[1].className.includes("selected")) {
+                return "img2img_sam_"
+            }
+        }
+    }
+    return "_sam_"
+}
+
+function samImmediatelyGenerate() {
+    const runButton = gradioApp().getElementById(samTabPrefix() + "run_button");
     if (runButton && runButton.style.display !== "none") {
         runButton.click();
     }
 }
 
-function isRealTimePreview() {
-    const realtime_preview = gradioApp().querySelector("#sam_realtime_preview_checkbox input[type='checkbox']");
+function samIsRealTimePreview() {
+    const realtime_preview = gradioApp().querySelector("#" + samTabPrefix() + "realtime_preview_checkbox input[type='checkbox']");
     return realtime_preview && realtime_preview.checked;
 }
 
-function createDot(sam_image, image, coord, label) {
+function samCreateDot(sam_image, image, coord, label) {
     const x = coord.x;
     const y = coord.y;
-    const realCoord = getRealCoordinate(image, coord.x, coord.y);
+    const realCoord = samGetRealCoordinate(image, coord.x, coord.y);
     if (realCoord[0] >= 0 && realCoord[0] <= image.naturalWidth && realCoord[1] >= 0 && realCoord[1] <= image.naturalHeight) {
+        const isPositive = label == (samTabPrefix() + "sam_positive");
         const circle = document.createElement("div");
         circle.style.position = "absolute";
         circle.style.width = "10px";
         circle.style.height = "10px";
         circle.style.borderRadius = "50%";
-        circle.style.backgroundColor = label == "sam_positive" ? "black" : "red";
         circle.style.left = x + "px";
         circle.style.top = y + "px";
         circle.className = label;
-        circle.title = (label == "sam_positive" ? "positive" : "negative") + "point label, left click it to cancel.";
+        circle.style.backgroundColor = isPositive ? "black" : "red";
+        circle.title = (isPositive ? "positive" : "negative") + " point label, left click it to cancel.";
         sam_image.appendChild(circle);
         circle.addEventListener("click", e => {
             e.stopPropagation();
             circle.remove();
-            if (gradioApp().querySelectorAll(".sam_positive").length == 0 &&
-                gradioApp().querySelectorAll(".sam_negative").length == 0) {
+            if (gradioApp().querySelectorAll("." + samTabPrefix() + "sam_positive").length == 0 &&
+                gradioApp().querySelectorAll("." + samTabPrefix() + "sam_negative").length == 0) {
                 disableRunButton();
             } else {
-                if (isRealTimePreview()) {
-                    immediatelyGenerate();
+                if (samIsRealTimePreview()) {
+                    samImmediatelyGenerate();
                 }
             }
         });
         enableRunButton();
-        if (isRealTimePreview()) {
-            immediatelyGenerate();
+        if (samIsRealTimePreview()) {
+            samImmediatelyGenerate();
         }
     }
 }
 
-function removeDots() {
-    const sam_image = gradioApp().getElementById("sam_input_image");
+function samRemoveDots() {
+    const sam_image = gradioApp().getElementById(samTabPrefix() + "input_image");
     if (sam_image) {
-        [".sam_positive", ".sam_negative"].forEach(cls => {
+        ["." + samTabPrefix() + "sam_positive", "." + samTabPrefix() + "sam_negative"].forEach(cls => {
             const dots = sam_image.querySelectorAll(cls);
     
             dots.forEach(dot => {
@@ -136,18 +152,18 @@ function submit_sam() {
     let res = create_submit_sam_args(arguments);
     let positive_points = [];
     let negative_points = [];
-    const sam_image = gradioApp().getElementById("sam_input_image");
+    const sam_image = gradioApp().getElementById(samTabPrefix() + "sam_input_image");
     const image = sam_image.querySelector('img');
-    const classes = [".sam_positive", ".sam_negative"];
+    const classes = ["." + samTabPrefix() + "sam_positive", "." + samTabPrefix() + "sam_negative"];
     classes.forEach(cls => {
         const dots = sam_image.querySelectorAll(cls);
         dots.forEach(dot => {
             const width = parseFloat(dot.style["left"]);
             const height = parseFloat(dot.style["top"]);
-            if (cls == ".sam_positive") {
-                positive_points.push(getRealCoordinate(image, width, height));
+            if (cls == "." + samTabPrefix() + "sam_positive") {
+                positive_points.push(samGetRealCoordinate(image, width, height));
             } else {
-                negative_points.push(getRealCoordinate(image, width, height));
+                negative_points.push(samGetRealCoordinate(image, width, height));
             }
         });
     });
@@ -157,21 +173,21 @@ function submit_sam() {
 }
 
 function dinoPreviewCanSubmit() {
-    const dino_preview_enable_checkbox = gradioApp().getElementById("dino_preview_checkbox");
+    const dino_preview_enable_checkbox = gradioApp().getElementById(samTabPrefix() + "dino_preview_checkbox");
     if (!dino_preview_enable_checkbox || 
         (dino_preview_enable_checkbox.querySelector("input") &&
         !dino_preview_enable_checkbox.querySelector("input").checked)) {
         return true;
     } else {
         let dino_preview_selected = false;
-        gradioApp().getElementById("dino_preview_boxes_selection").querySelectorAll("input").forEach(element => dino_preview_selected = element.checked || dino_preview_selected);
+        gradioApp().getElementById(samTabPrefix() + "dino_preview_boxes_selection").querySelectorAll("input").forEach(element => dino_preview_selected = element.checked || dino_preview_selected);
         return dino_preview_selected;
     }
 }
 
 function dinoCanSubmit() {
-    const dino_enable_checkbox = gradioApp().getElementById("dino_enable_checkbox")
-    const dino_text_prompt = gradioApp().getElementById("dino_text_prompt")
+    const dino_enable_checkbox = gradioApp().getElementById(samTabPrefix() + "dino_enable_checkbox")
+    const dino_text_prompt = gradioApp().getElementById(samTabPrefix() + "dino_text_prompt")
     return (dino_enable_checkbox && dino_text_prompt &&
         dino_enable_checkbox.querySelector("input") &&
         dino_enable_checkbox.querySelector("input").checked &&
@@ -180,27 +196,27 @@ function dinoCanSubmit() {
 }
 
 function samCanSubmit() {
-    return (gradioApp().querySelectorAll(".sam_positive").length > 0 ||
-        gradioApp().querySelectorAll(".sam_negative").length > 0)
+    return (gradioApp().querySelectorAll("." + samTabPrefix() + "sam_positive").length > 0 ||
+        gradioApp().querySelectorAll("." + samTabPrefix() + "sam_negative").length > 0)
 }
 
 function samHasImageInput() {
-    const sam_image = gradioApp().getElementById("sam_input_image")
+    const sam_image = gradioApp().getElementById(samTabPrefix() + "input_image")
     return sam_image && sam_image.querySelector('img')
 }
 
-function onChangeDinoPreviewBoxesSelection() {
-    changeRunButton(arguments[0].length > 0)
+function dinoOnChangePreviewBoxesSelection() {
+    samChangeRunButton(arguments[0].length > 0)
 }
 
 prevImg = null
 
 onUiUpdate(() => {
-    const sam_image = gradioApp().getElementById("sam_input_image")
+    const sam_image = gradioApp().getElementById(samTabPrefix() + "input_image")
     if (sam_image) {
         const image = sam_image.querySelector('img')
         if (image && prevImg != image.src) {
-            removeDots();
+            samRemoveDots();
             prevImg = image.src;
 
             image.addEventListener("click", event => {
@@ -208,7 +224,7 @@ onUiUpdate(() => {
                 const x = event.clientX - rect.left;
                 const y = event.clientY - rect.top;
 
-                createDot(sam_image, event.target, { x, y }, "sam_positive");
+                samCreateDot(sam_image, event.target, { x, y }, samTabPrefix() + "sam_positive");
             });
 
             image.addEventListener("contextmenu", event => {
@@ -217,13 +233,13 @@ onUiUpdate(() => {
                 const x = event.clientX - rect.left;
                 const y = event.clientY - rect.top;
 
-                createDot(sam_image, event.target, { x, y }, "sam_negative");
+                samCreateDot(sam_image, event.target, { x, y }, samTabPrefix() + "sam_negative");
             });
 
             const observer = new MutationObserver(mutations => {
                 mutations.forEach(mutation => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'src' && mutation.target === image) {
-                        removeDots();
+                        samRemoveDots();
                         prevImg = image.src;
                     }
                 });
@@ -231,10 +247,10 @@ onUiUpdate(() => {
 
             observer.observe(image, { attributes: true });
         } else if (!image) {
-            removeDots();
+            samRemoveDots();
             prevImg = null;
         }
     }
 
-    changeRunButton();
+    samChangeRunButton();
 })
