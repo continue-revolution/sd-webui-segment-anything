@@ -493,10 +493,7 @@ class Script(scripts.Script):
                 p.init_images = [input_image]
                 p.image_mask = image_mask
             if enable_copy_cn_inpaint and cn_num < self.max_cn_num():
-                image_mask_np = np.array(image_mask.convert("L"))
-                input_image_np = np.array(input_image).astype(np.int32)
-                input_image[image_mask_np > 127] = -255
-                self.set_p_value(p, 'control_net_input_image', cn_num, input_image_np)
+                self.set_p_value(p, 'control_net_input_image', cn_num, {"image": input_image, "mask": image_mask.convert("L")})
         
     def set_p_value(self, p: StableDiffusionProcessing, attr: str, idx: int, v):
         value = getattr(p, attr, None)
