@@ -326,7 +326,8 @@ class Script(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        priorize_sam_scripts(is_img2img)
+        if self.max_cn_num() > 0:
+            priorize_sam_scripts(is_img2img)
         tab_prefix = ("img2img" if is_img2img else "txt2img") + "_sam_"
         with gr.Accordion('Segment Anything', open=False):
             with gr.Tabs():

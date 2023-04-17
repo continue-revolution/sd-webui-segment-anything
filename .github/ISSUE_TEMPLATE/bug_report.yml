@@ -25,6 +25,13 @@ body:
       options:
         - label: My problem is not about installing GroundingDINO
           required: true
+  - type: checkboxes
+    attributes:
+      label: Do you know that you should use the newest ControlNet extension and enable external control if you want SAM extension to control ControlNet?
+      description: The pull request to ControlNet associated to this functionality was actually did by me... Before that PR, it was impossible to control ControlNet inpainting.
+      options:
+        - label: I have updated ControlNet extension and enabled "Allow other script to control this extension"
+          required: true
   - type: markdown
     attributes:
       value: |
