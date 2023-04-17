@@ -65,6 +65,7 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 - Optionally check `Expand Mask` and specify the amount, then click `Update Mask`.
 
 ##### img2img Inpainting
+- Update your ControlNet (very important, see [this pull request](https://github.com/Mikubill/sd-webui-controlnet/pull/859)) and check `Allow other script to control this extension` on your settings of ControlNet.
 - Check `Copy to Inpaint Upload`. Note that you **must** be at img2img tab to use this functionality.
 - Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
 
