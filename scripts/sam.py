@@ -11,7 +11,7 @@ from scipy.ndimage import binary_dilation
 from modules import scripts, shared
 from modules.ui import gr_show
 from modules.safe import unsafe_torch_load, load
-from modules.processing import StableDiffusionProcessingImg2Img
+from modules.processing import StableDiffusionProcessingImg2Img, StableDiffusionProcessing
 from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
 from segment_anything import SamPredictor, sam_model_registry
@@ -222,6 +222,7 @@ def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
     boxes_choice = [str(i) for i in range(boxes_filt.shape[0])]
     return Image.fromarray(show_boxes(image_np, boxes_filt.astype(int), show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice), gr.update(visible=False)
 
+
 def dino_batch_process(
     batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
     dino_batch_source_dir, dino_batch_dest_dir,
@@ -291,6 +292,31 @@ def dino_batch_process(
     return process_info + "Done"
     
 
+def priorize_sam_scripts(is_img2img):
+    if is_img2img:
+        cnet_idx = None
+        sam_idx = None
+        for idx, s in enumerate(scripts.scripts_img2img.alwayson_scripts):
+            if s.title() == "Segment Anything":
+                sam_idx = idx
+            elif s.title() == "ControlNet":
+                cnet_idx = idx
+        if cnet_idx < sam_idx:
+            scripts.scripts_img2img.alwayson_scripts[cnet_idx], scripts.scripts_img2img.alwayson_scripts[
+                sam_idx] = scripts.scripts_img2img.alwayson_scripts[sam_idx], scripts.scripts_img2img.alwayson_scripts[cnet_idx]
+    else:
+        cnet_idx = None
+        sam_idx = None
+        for idx, s in enumerate(scripts.scripts_txt2img.alwayson_scripts):
+            if s.title() == "Segment Anything":
+                sam_idx = idx
+            elif s.title() == "ControlNet":
+                cnet_idx = idx
+        if cnet_idx < sam_idx:
+            scripts.scripts_txt2img.alwayson_scripts[cnet_idx], scripts.scripts_txt2img.alwayson_scripts[
+                sam_idx] = scripts.scripts_txt2img.alwayson_scripts[sam_idx], scripts.scripts_txt2img.alwayson_scripts[cnet_idx]
+
+
 class Script(scripts.Script):
 
     def title(self):
@@ -300,42 +326,41 @@ class Script(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        with gr.Accordion('Segment Anything', open=False, elem_id=id('accordion'), visible=is_img2img):
+        priorize_sam_scripts(is_img2img)
+        tab_prefix = ("img2img" if is_img2img else "txt2img") + "_sam_"
+        with gr.Accordion('Segment Anything', open=False):
             with gr.Tabs():
                 with gr.TabItem(label="Single Image"):
                     with gr.Column():
                         gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
                         with gr.Row():
-                            sam_model_name = gr.Dropdown(label="SAM Model", elem_id="sam_model", choices=sam_model_list,
+                            sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list,
                                                     value=sam_model_list[0] if len(sam_model_list) > 0 else None)
                             refresh_models = ToolButton(value=refresh_symbol)
                             refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
-                        input_image = gr.Image(label="Image for Segment Anything", elem_id="sam_input_image",
-                                            show_label=False, source="upload", type="pil", image_mode="RGBA")
+                        input_image = gr.Image(label="Image for Segment Anything", elem_id=f"{tab_prefix}input_image", show_label=False, source="upload", type="pil", image_mode="RGBA")
                         remove_dots = gr.Button(value="Remove all point prompts")
                         dummy_component = gr.Label(visible=False)
 
                         gr.HTML(value="<p>GroundingDINO + Segment Anything can achieve [text prompt]->[object detection]->[segmentation]</p>")
-                        dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id="dino_enable_checkbox")
+                        dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id=f"{tab_prefix}dino_enable_checkbox")
                         with gr.Column(visible=False) as dino_column:
                             gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
-                            dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", 
-                                                        elem_id="dino_model", choices=dino_model_list, value=dino_model_list[0])
+                            dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
 
-                            text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id="dino_text_prompt")
-                            text_prompt.change(fn=lambda _: None, inputs=[dummy_component], outputs=None, _js="registerDinoTextObserver")
+                            text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id=f"{tab_prefix}dino_text_prompt")
+                            text_prompt.change(fn=lambda _: None, inputs=[dummy_component], outputs=None, _js="dinoRegisterTextObserver")
 
                             box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
 
-                            dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id="dino_preview_checkbox")
+                            dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id=f"{tab_prefix}dino_preview_checkbox")
                             with gr.Column(visible=False) as dino_preview:
-                                dino_preview_boxes = gr.Image(label="Image for GroundingDINO", elem_id="dino_box_output",
-                                                            show_label=False, type="pil", image_mode="RGBA")
-                                with gr.Row(elem_id="dino_generate_box", elem_classes="generate-box"):
-                                    gr.Button(value="Add text prompt to generate bounding box", elem_id="dino_no_button")
-                                    dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id="dino_run_button")
-                                dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id="dino_preview_boxes_selection")
-                                dino_preview_boxes_selection.change(fn=lambda _: None, inputs=[dino_preview_boxes_selection], outputs=None, _js="onChangeDinoPreviewBoxesSelection")
+                                dino_preview_boxes = gr.Image(label="Image for GroundingDINO", show_label=False, type="pil", image_mode="RGBA")
+                                with gr.Row(elem_classes="generate-box"):
+                                    gr.Button(value="Add text prompt to generate bounding box", elem_id=f"{tab_prefix}dino_no_button")
+                                    dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id=f"{tab_prefix}dino_run_button")
+                                dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id=f"{tab_prefix}dino_preview_boxes_selection")
+                                dino_preview_boxes_selection.change(fn=lambda _: None, inputs=[dino_preview_boxes_selection], outputs=None, _js="dinoOnChangePreviewBoxesSelection")
                                 dino_preview_result = gr.Text(value="", show_label=False, visible=False)
 
                                 dino_preview_boxes_button.click(
@@ -344,24 +369,29 @@ class Script(scripts.Script):
                                     inputs=[input_image, dino_model_name, text_prompt, box_threshold],
                                     outputs=[dino_preview_boxes, dino_preview_boxes_selection, dino_preview_result])
 
-                        mask_image = gr.Gallery(label='Segment Anything Output', show_label=False, elem_id='sam_gallery').style(grid=3)
+                        mask_image = gr.Gallery(label='Segment Anything Output', show_label=False).style(grid=3)
 
-                        with gr.Row(elem_id="sam_generate_box", elem_classes="generate-box"):
-                            gr.Button(value="Add dot prompt or enable GroundingDINO with text prompts to preview segmentation", elem_id="sam_no_button")
-                            run_button = gr.Button(value="Preview Segmentation", elem_id="sam_run_button")
+                        with gr.Row(elem_classes="generate-box"):
+                            gr.Button(value="Add dot prompt or enable GroundingDINO with text prompts to preview segmentation", elem_id=f"{tab_prefix}sam_no_button")
+                            run_button = gr.Button(value="Preview Segmentation", elem_id=f"{tab_prefix}run_button")
                         run_result = gr.Text(value="", show_label=False)
 
-                        gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id="sam_realtime_preview_checkbox")
+                        gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")
                             
                         with gr.Row():
-                            enabled = gr.Checkbox(value=False, label="Copy to Inpaint Upload", elem_id="sam_impaint_checkbox")
+                            enable_copy_inpaint_label = "Copy to Inpaint Upload" if is_img2img else "Please go to img2img to copy to inpaint upload."
+                            enable_copy_inpaint = gr.Checkbox(value=False, label=enable_copy_inpaint_label, interactive=is_img2img)
                             chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
+                        
+                        with gr.Row(visible=(self.max_cn_num() > 0)):
+                            enable_copy_cn_inpaint = gr.Checkbox(value=False, label='Copy to ControlNet Inpaint')
+                            cn_num = gr.Radio(value="0", choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
                             
-                        dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask", elem_id="dilation_enable_checkbox")
+                        dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")
                         with gr.Column(visible=False) as dilation_column:
                             dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
-                            expanded_mask_image = gr.Gallery(label="Expanded Mask", elem_id="sam_expanded_mask").style(grid=3)
-                            update_mask_button = gr.Button(value="Update Mask", elem_id="update_mask_button")
+                            expanded_mask_image = gr.Gallery(label="Expanded Mask").style(grid=3)
+                            update_mask_button = gr.Button(value="Update Mask")
                         
                         switch = gr.Button(value="Switch to Inpaint Upload")
                         
@@ -375,14 +405,13 @@ class Script(scripts.Script):
                         batch_refresh_models = ToolButton(value=refresh_symbol)
                         batch_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
                     
-                    batch_dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)",
-                                                        elem_id="batch_dino_model", choices=dino_model_list, value=dino_model_list[0])
+                    batch_dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
                     
-                    batch_text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id="batch_dino_text_prompt")
+                    batch_text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt")
 
                     batch_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
                     
-                    batch_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)", elem_id="batch_dino_dilation_amt")
+                    batch_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)")
                     
                     dino_batch_source_dir = gr.Textbox(label="Source directory")
                     dino_batch_dest_dir = gr.Textbox(label="Destination directory")
@@ -435,7 +464,7 @@ class Script(scripts.Script):
 
             remove_dots.click(
                 fn=lambda _: None,
-                _js="removeDots",
+                _js="samRemoveDots",
                 inputs=[dummy_component],
                 outputs=None)
             
@@ -455,10 +484,28 @@ class Script(scripts.Script):
                 inputs=[mask_image, chosen_mask, dilation_amt, input_image],
                 outputs=[expanded_mask_image])
         
-        return [enabled, input_image, mask_image, chosen_mask, dilation_checkbox, expanded_mask_image]
+        return [enable_copy_inpaint, input_image, mask_image, chosen_mask, dilation_checkbox, expanded_mask_image, enable_copy_cn_inpaint, cn_num]
 
-    def process(self, p: StableDiffusionProcessingImg2Img, enabled=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None):
-        if not enabled or input_image is None or mask is None or not isinstance(p, StableDiffusionProcessingImg2Img):
-            return
-        p.init_images = [input_image]
-        p.image_mask = Image.open(expanded_mask[1]['name'] if dilation_enabled and expanded_mask is not None else mask[chosen_mask + 3]['name'])
+    def process(self, p: StableDiffusionProcessingImg2Img, enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0):
+        if input_image is not None and mask is not None:
+            image_mask = Image.open(expanded_mask[1]['name'] if dilation_enabled and expanded_mask is not None else mask[chosen_mask + 3]['name'])
+            if enable_copy_inpaint and isinstance(p, StableDiffusionProcessingImg2Img):
+                p.init_images = [input_image]
+                p.image_mask = image_mask
+            if enable_copy_cn_inpaint and cn_num < self.max_cn_num():
+                self.set_p_value(p, 'control_net_input_image', cn_num, {"image": input_image, "mask": image_mask.convert("L")})
+        
+    def set_p_value(self, p: StableDiffusionProcessing, attr: str, idx: int, v):
+        value = getattr(p, attr, None)
+        if isinstance(value, list):
+            value[idx] = v
+        else:
+            # if value is None, ControlNet uses default value
+            value = [value] * self.max_cn_num()
+            value[idx] = v
+        setattr(p, attr, value)
+
+    def max_cn_num(self):
+        if shared.opts.data is None:
+            return 0
+        return int(shared.opts.data.get('control_net_max_models_num', 0))

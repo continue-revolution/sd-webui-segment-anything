@@ -1,19 +1,9 @@
-#sam_run_button {
+#txt2img_sam_run_button, #img2img_sam_run_button, #txt2img_sam_dino_run_button, #img2img_sam_dino_run_button {
     position: absolute;
     display: none;
     width: 100%;
 }
 
-#sam_run_button:hover {
-   background:  #b4c0cc;
-}
-
-#dino_run_button {
-    position: absolute;
-    display: none;
-    width: 100%;
-}
-
-#dino_run_button:hover {
+#txt2img_sam_run_button:hover, #img2img_sam_run_button:hover, #txt2img_sam_dino_run_button:hover, #img2img_sam_dino_run_button:hover {
    background:  #b4c0cc;
 }

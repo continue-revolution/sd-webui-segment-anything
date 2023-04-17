@@ -7,6 +7,7 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 - `2023/04/12`: [Feature] Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
 - `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](#how-to-use) and [Demo](#demo) for more detail.
 - `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](#api-support) for more detail.
+- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to the most up-to-date version to use it. Check [How to Use](#how-to-use) for more detail. ControlNet demo will be released after semantic segmentation is supported.
 
 ## Plan
 
@@ -15,7 +16,7 @@ Thanks for suggestions from [GitHub Issues](https://github.com/continue-revoluti
 - [ ] Support color inpainting as mentioned in [#21](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22)
 - [ ] Support automatic mask generation for hierarchical image segmentation and SD animation
 - [ ] Support semantic segmentation for batch process, ControlNet segmentation and SD animation
-- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet) inpainting and segmentation
+- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet) segmentation
 - [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
 
 Not all plans may ultimately be implemented. Some ideas might not work and be abandoned. Support for old commits has low priority, so I would encourage you to update your WebUI as soon as you can.
@@ -54,17 +55,21 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 
 ### Step 3:
 
-- Launch webui and switch to img2img mode.
-
 #### Single Image
 - Upload your image
 - Optionally add point prompts on the image. Left click for positive point prompt (black dot), right click for negative point prompt (red dot), left click any dot again to cancel the prompt. You must add point prompt if you do not wish to use GroundingDINO.
 - Optionally check `Enable GroundingDINO`, select GroundingDINO model you want, write text prompt and pick a box threshold. You must write text prompt if you do not wish to use point prompts. Note that GroundingDINO models will be automatically downloaded from [HuggingFace](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main). If your terminal cannot visit HuggingFace, please manually download the model and put it under `${sd-webui-sam}/models/grounding-dino`.
 - Optionally enable previewing GroundingDINO bounding box and click `Generate bounding box`. You must write text prompt to preview bounding box. After you see the boxes with number marked on the left corner, uncheck all the boxes you do not want. If you uncheck all boxes, you will have to add point prompts to generate masks.
 - Click `Preview Segmentation` button. Due to the limitation of SAM, if there are multiple bounding boxes, your point prompts will not take effect when generating masks.
-- Choose your favorite segmentation and check `Copy to Inpaint Upload`
-- Optionally check `Expand Mask` and specify the amount, then click `Update Mask`
+- Choose your favorite segmentation.
+- Optionally check `Expand Mask` and specify the amount, then click `Update Mask`.
+
+##### img2img Inpainting
+- Check `Copy to Inpaint Upload`. Note that you **must** be at img2img tab to use this functionality.
 - Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
+
+##### ControlNet Inpainting
+- Check `Copy to ControlNet Inpaint` and select the ControlNet panel for inpainting if you want to use multi-ControlNet. You can be either at img2img tab or at txt2img tab to use this functionality.
 
 #### Batch Process
 - Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images. **The source directory should only contain images**.
