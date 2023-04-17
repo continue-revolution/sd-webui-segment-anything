@@ -4,6 +4,7 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 
 ## News
 
+- `2023/04/10`: [Release] SAM extension released! Check [How to Use](#how-to-use) and [Demo](#demo) for more detail.
 - `2023/04/12`: [Feature] Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
 - `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](#how-to-use) and [Demo](#demo) for more detail.
 - `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](#api-support) for more detail.
