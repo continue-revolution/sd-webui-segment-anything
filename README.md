@@ -7,7 +7,7 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 - `2023/04/12`: [Feature] Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
 - `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](#how-to-use) and [Demo](#demo) for more detail.
 - `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](#api-support) for more detail.
-- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to the most up-to-date version to use it. Check [How to Use](#how-to-use) for more detail. ControlNet demo will be released after semantic segmentation is supported.
+- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to the most up-to-date version to use it. ControlNet inpainting has far better performance compared to general-purpose models, and you do not need to download inpainting-specific models anymore. Check [How to Use](#how-to-use) for more detail. ControlNet demo will be released after semantic segmentation is supported.
 
 ## Plan
 
@@ -70,6 +70,7 @@ To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything
 
 ##### ControlNet Inpainting
 - Check `Copy to ControlNet Inpaint` and select the ControlNet panel for inpainting if you want to use multi-ControlNet. You can be either at img2img tab or at txt2img tab to use this functionality.
+- Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel, as SAM extension will help you to do that. Write your prompts, configurate A1111 panel and click `Generate`.
 
 #### Batch Process
 - Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images. **The source directory should only contain images**.
