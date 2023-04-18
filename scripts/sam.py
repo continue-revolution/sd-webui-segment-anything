@@ -432,6 +432,20 @@ class Script(scripts.Script):
                                 dino_batch_save_image_with_mask],
                         outputs=[dino_batch_progress]
                     )
+                    
+                with gr.TabItem(label="Upload Mask to ControlNet Inpainting"):
+                    gr.HTML("<p>This panel is for those who want to upload mask to ControlNet inpainting. It is not part of SAM's functionality. By checking the box below, you agree that you will disable all functionalities of SAM.</p>")
+                    with gr.Row():
+                        cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to SAM.")
+                        cnet_upload_num = gr.Radio(value="0", choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
+                    with gr.Column(visible=False) as cnet_upload_panel:
+                        cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
+                        cnet_upload_mask_inpaint = gr.Image(label="Mask for ControlNet Inpaint", source="upload", interactive=True, type="pil")
+                    cnet_upload_enable.change(
+                        fn=gr_show,
+                        inputs=[cnet_upload_enable],
+                        outputs=[cnet_upload_panel],
+                        show_progress=False)
 
                 unload = gr.Button(value="Unload all models from memory")
 
@@ -484,10 +498,12 @@ class Script(scripts.Script):
                 inputs=[mask_image, chosen_mask, dilation_amt, input_image],
                 outputs=[expanded_mask_image])
         
-        return [enable_copy_inpaint, input_image, mask_image, chosen_mask, dilation_checkbox, expanded_mask_image, enable_copy_cn_inpaint, cn_num]
+        return [enable_copy_inpaint, input_image, mask_image, chosen_mask, dilation_checkbox, expanded_mask_image, enable_copy_cn_inpaint, cn_num, cnet_upload_enable, cnet_upload_num, cnet_upload_img_inpaint, cnet_upload_mask_inpaint]
 
-    def process(self, p: StableDiffusionProcessingImg2Img, enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0):
-        if input_image is not None and mask is not None:
+    def process(self, p: StableDiffusionProcessingImg2Img, enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0, cnet_upload_enable=False, cnet_upload_num=0, cnet_upload_img_inpaint=None, cnet_upload_mask_inpaint=None):
+        if cnet_upload_enable:
+            self.set_p_value(p, 'control_net_input_image', cnet_upload_num, {"image": cnet_upload_img_inpaint, "mask": cnet_upload_mask_inpaint.convert("L")})
+        elif input_image is not None and mask is not None:
             image_mask = Image.open(expanded_mask[1]['name'] if dilation_enabled and expanded_mask is not None else mask[chosen_mask + 3]['name'])
             if enable_copy_inpaint and isinstance(p, StableDiffusionProcessingImg2Img):
                 p.init_images = [input_image]

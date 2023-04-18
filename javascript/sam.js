@@ -206,7 +206,7 @@ function samHasImageInput() {
 }
 
 function dinoOnChangePreviewBoxesSelection() {
-    samChangeRunButton(arguments[0].length > 0)
+    samChangeRunButton()
 }
 
 samPrevImg = {
