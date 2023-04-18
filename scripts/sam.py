@@ -181,7 +181,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         num_points = len(positive_points) + len(negative_points)
         if num_box == 0 and num_points == 0:
             garbage_collect(sam)
-            if dino_enabled and num_box == 0:
+            if dino_enabled and dino_preview_checkbox and num_box == 0:
                 return [], "It seems that you are using a high box threshold with no point prompts. Please lower your box threshold and re-try."
             return [], "You neither added point prompts nor enabled GroundingDINO. Segmentation cannot be generated."
         sam_predict_status = f"SAM inference with {num_box} box, {len(positive_points)} positive prompts, {len(negative_points)} negative prompts"
