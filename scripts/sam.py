@@ -394,7 +394,7 @@ class Script(scripts.Script):
                             expanded_mask_image = gr.Gallery(label="Expanded Mask").style(grid=3)
                             update_mask_button = gr.Button(value="Update Mask")
                         
-                        switch = gr.Button(value="Switch to Inpaint Upload")
+                        # switch = gr.Button(value="Switch to Inpaint Upload")
                         
                 with gr.TabItem(label="Batch Process"):
                     gr.HTML(value="<p>You may configurate the following items and generate masked image for all images under a directory. This mode is designed for generating LoRA/LyCORIS training set.</p>")
@@ -437,6 +437,7 @@ class Script(scripts.Script):
                     gr.HTML("<p>This panel is for those who want to upload mask to ControlNet inpainting. It is not part of SAM's functionality. By checking the box below, you agree that you will disable all functionalities of SAM.</p>")
                     with gr.Row():
                         cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to ControlNet inpaint.")
+                        cnet_upload_to_img2img_enable = gr.Checkbox(value=False, visible=is_img2img, label="Also upload to img2img inpainting upload.")
                         cnet_upload_num = gr.Radio(value="0", choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
                     with gr.Column(visible=False) as cnet_upload_panel:
                         cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
@@ -446,7 +447,8 @@ class Script(scripts.Script):
                         inputs=[cnet_upload_enable],
                         outputs=[cnet_upload_panel],
                         show_progress=False)
-
+                
+                switch = gr.Button(value="Switch to Inpaint Upload")
                 unload = gr.Button(value="Unload all models from memory")
 
             run_button.click(
@@ -498,10 +500,16 @@ class Script(scripts.Script):
                 inputs=[mask_image, chosen_mask, dilation_amt, input_image],
                 outputs=[expanded_mask_image])
         
-        return [enable_copy_inpaint, input_image, mask_image, chosen_mask, dilation_checkbox, expanded_mask_image, enable_copy_cn_inpaint, cn_num, cnet_upload_enable, cnet_upload_num, cnet_upload_img_inpaint, cnet_upload_mask_inpaint]
+        return [enable_copy_inpaint, input_image, mask_image, chosen_mask, dilation_checkbox, expanded_mask_image, enable_copy_cn_inpaint, cn_num, 
+                cnet_upload_enable, cnet_upload_to_img2img_enable, cnet_upload_num, cnet_upload_img_inpaint, cnet_upload_mask_inpaint]
 
-    def process(self, p: StableDiffusionProcessingImg2Img, enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0, cnet_upload_enable=False, cnet_upload_num=0, cnet_upload_img_inpaint=None, cnet_upload_mask_inpaint=None):
+    def process(self, p: StableDiffusionProcessingImg2Img, 
+                enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0, 
+                cnet_upload_enable=False, cnet_upload_to_img2img_enable=False, cnet_upload_num=0, cnet_upload_img_inpaint=None, cnet_upload_mask_inpaint=None):
         if cnet_upload_enable:
+            if cnet_upload_to_img2img_enable:
+                p.init_images = [cnet_upload_img_inpaint]
+                p.image_mask = cnet_upload_mask_inpaint
             self.set_p_value(p, 'control_net_input_image', cnet_upload_num, {"image": cnet_upload_img_inpaint, "mask": cnet_upload_mask_inpaint.convert("L")})
         elif input_image is not None and mask is not None:
             image_mask = Image.open(expanded_mask[1]['name'] if dilation_enabled and expanded_mask is not None else mask[chosen_mask + 3]['name'])
