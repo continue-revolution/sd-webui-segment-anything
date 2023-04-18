@@ -387,8 +387,8 @@ class Script(scripts.Script):
                         
                         with gr.Row(visible=(self.max_cn_num() > 0)):
                             enable_copy_cn_inpaint = gr.Checkbox(value=False, label='Copy to ControlNet Inpaint')
-                            cn_num = gr.Radio(value="0", choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
-                            
+                            cn_num = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
+
                         dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")
                         with gr.Column(visible=False) as dilation_column:
                             dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
@@ -439,7 +439,7 @@ class Script(scripts.Script):
                     with gr.Row():
                         cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to ControlNet inpaint.")
                         cnet_upload_to_img2img_enable = gr.Checkbox(value=False, visible=is_img2img, label="Also upload to img2img inpainting upload.")
-                        cnet_upload_num = gr.Radio(value="0", choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
+                        cnet_upload_num = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
                     with gr.Column(visible=False) as cnet_upload_panel:
                         cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
                         cnet_upload_mask_inpaint = gr.Image(label="Mask for ControlNet Inpaint", source="upload", interactive=True, type="pil")
