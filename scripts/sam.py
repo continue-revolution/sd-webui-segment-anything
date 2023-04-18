@@ -226,7 +226,7 @@ def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
 def dino_batch_process(
     batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
     dino_batch_source_dir, dino_batch_dest_dir,
-    dino_batch_output_per_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask):
+    dino_batch_output_per_image, dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask):
     if batch_text_prompt is None or batch_text_prompt == "":
         return "Please add text prompts to generate masks"
     print("Start batch processing")
@@ -279,8 +279,9 @@ def dino_batch_process(
                 _, merged_mask = dilate_mask(merged_mask, batch_dilation_amt)
             image_np_copy = copy.deepcopy(image_np)
             image_np_copy[~merged_mask] = np.array([0, 0, 0, 0])
-            output_image = Image.fromarray(image_np_copy)
-            output_image.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_output{ext}"))
+            if dino_batch_save_image:
+                output_image = Image.fromarray(image_np_copy)
+                output_image.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_output{ext}"))
             if dino_batch_save_mask:
                 output_mask = Image.fromarray(merged_mask)
                 output_mask.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_mask{ext}"))
@@ -415,19 +416,19 @@ class Script(scripts.Script):
                     dino_batch_source_dir = gr.Textbox(label="Source directory")
                     dino_batch_dest_dir = gr.Textbox(label="Destination directory")
                     with gr.Row():
-                        dino_batch_output_per_image = gr.Radio(
-                            choices=["1", "3"], value="3", type="index", label="Output per image: ")
+                        dino_batch_output_per_image = gr.Radio(choices=["1", "3"], value="3", type="index", label="Output per image: ")
+                        dino_batch_save_image = gr.Checkbox(value=True, label="Save masked unage")
                         dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
+                        dino_batch_save_image_with_mask = gr.Checkbox(value=True, label="Save original image with mask and bounding box")
                         dino_batch_save_background = gr.Checkbox(value=False, label="Save background instead of foreground")
-                        dino_batch_save_image_with_mask = gr.Checkbox(
-                            value=True, label="Save original image with mask and bounding box")
                     dino_batch_run_button = gr.Button(value="Start batch process")
                     dino_batch_progress = gr.Text(value="", show_label=False)
                     dino_batch_run_button.click(
                         fn=dino_batch_process,
                         inputs=[batch_sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
                                 dino_batch_source_dir, dino_batch_dest_dir,
-                                dino_batch_output_per_image, dino_batch_save_mask, dino_batch_save_background, 
+                                dino_batch_output_per_image, 
+                                dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, 
                                 dino_batch_save_image_with_mask],
                         outputs=[dino_batch_progress]
                     )
