@@ -160,3 +160,10 @@ Give me a star if you like this extension!
 
 [![Star History Chart](https://api.star-history.com/svg?repos=continue-revolution/sd-webui-segment-anything&type=Date)](https://star-history.com/#continue-revolution/sd-webui-segment-anything&Date)
 
+## Sponsor
+
+You can sponsor me via WeChat or Alipay.
+
+| WeChat | Alipay |
+| --- | --- |
+| ![216aff0250c7fd2bb32eeb4f7aae623](https://user-images.githubusercontent.com/63914308/232821879-a1edfc97-1f5f-41bc-9223-64cff4b96632.jpg) | ![15fe95b4ada738acf3e44c1d45a1805](https://user-images.githubusercontent.com/63914308/232821976-7854493b-6d80-471c-89fa-44ba6a783b62.jpg) |
