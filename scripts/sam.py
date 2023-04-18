@@ -436,7 +436,7 @@ class Script(scripts.Script):
                 with gr.TabItem(label="Upload Mask to ControlNet Inpainting"):
                     gr.HTML("<p>This panel is for those who want to upload mask to ControlNet inpainting. It is not part of SAM's functionality. By checking the box below, you agree that you will disable all functionalities of SAM.</p>")
                     with gr.Row():
-                        cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to SAM.")
+                        cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to ControlNet inpaint.")
                         cnet_upload_num = gr.Radio(value="0", choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
                     with gr.Column(visible=False) as cnet_upload_panel:
                         cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
