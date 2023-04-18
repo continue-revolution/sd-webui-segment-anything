@@ -417,7 +417,7 @@ class Script(scripts.Script):
                     dino_batch_dest_dir = gr.Textbox(label="Destination directory")
                     with gr.Row():
                         dino_batch_output_per_image = gr.Radio(choices=["1", "3"], value="3", type="index", label="Output per image: ")
-                        dino_batch_save_image = gr.Checkbox(value=True, label="Save masked unage")
+                        dino_batch_save_image = gr.Checkbox(value=True, label="Save masked image")
                         dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
                         dino_batch_save_image_with_mask = gr.Checkbox(value=True, label="Save original image with mask and bounding box")
                         dino_batch_save_background = gr.Checkbox(value=False, label="Save background instead of foreground")
