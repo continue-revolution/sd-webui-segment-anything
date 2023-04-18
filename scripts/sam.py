@@ -434,7 +434,7 @@ class Script(scripts.Script):
                         outputs=[dino_batch_progress]
                     )
                     
-                with gr.TabItem(label="Upload Mask to ControlNet Inpainting", visible=self.max_cn_num() > 0):
+                with gr.TabItem(label="Upload Mask to ControlNet Inpainting"):
                     gr.HTML("<p>This panel is for those who want to upload mask to ControlNet inpainting. It is not part of SAM's functionality. By checking the box below, you agree that you will disable all functionalities of SAM.</p>")
                     with gr.Row():
                         cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to ControlNet inpaint.")
