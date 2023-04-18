@@ -138,6 +138,10 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
                 dino_checkbox, dino_model_name, text_prompt, box_threshold,
                 dino_preview_checkbox, dino_preview_boxes_selection, gui=True):
     print("Start SAM Processing")
+    if sam_model_name is None:
+        return [], "SAM model not found. Please download SAM model from extension README."
+    if input_image is None:
+        return [], "SAM requires an input image. Please upload an image first."
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
     dino_enabled = dino_checkbox and text_prompt is not None
@@ -177,7 +181,9 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         num_points = len(positive_points) + len(negative_points)
         if num_box == 0 and num_points == 0:
             garbage_collect(sam)
-            return [], "It seems that you are using a high box threshold with no point prompts. Please lower your box threshold and re-try."
+            if dino_enabled and num_box == 0:
+                return [], "It seems that you are using a high box threshold with no point prompts. Please lower your box threshold and re-try."
+            return [], "You neither added point prompts nor enabled GroundingDINO. Segmentation cannot be generated."
         sam_predict_status = f"SAM inference with {num_box} box, {len(positive_points)} positive prompts, {len(negative_points)} negative prompts"
         print(sam_predict_status)
         point_coords = np.array(positive_points + negative_points)
@@ -214,6 +220,10 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
 
 
 def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
+    if input_image is None:
+        return None, gr.update(), gr.update(visible=True, value=f"GroundingDINO requires input image.")
+    if text_prompt is None or text_prompt == "":
+        return None, gr.update(), gr.update(visible=True, value=f"GroundingDINO requires text prompt.")
     image_np = np.array(input_image)
     boxes_filt, install_success = dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold)
     if not install_success:
@@ -348,20 +358,13 @@ class Script(scripts.Script):
                         with gr.Column(visible=False) as dino_column:
                             gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
                             dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
-
-                            text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt", elem_id=f"{tab_prefix}dino_text_prompt")
-                            text_prompt.change(fn=lambda _: None, inputs=[dummy_component], outputs=None, _js="dinoRegisterTextObserver")
-
+                            text_prompt = gr.Textbox(placeholder="You must enter text prompts to enable groundingdino. Otherwise this extension will fall back to point prompts only.", label="GroundingDINO Detection Prompt", elem_id=f"{tab_prefix}dino_text_prompt")
                             box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
-
                             dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id=f"{tab_prefix}dino_preview_checkbox")
                             with gr.Column(visible=False) as dino_preview:
                                 dino_preview_boxes = gr.Image(label="Image for GroundingDINO", show_label=False, type="pil", image_mode="RGBA")
-                                with gr.Row(elem_classes="generate-box"):
-                                    gr.Button(value="Add text prompt to generate bounding box", elem_id=f"{tab_prefix}dino_no_button")
-                                    dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id=f"{tab_prefix}dino_run_button")
+                                dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id=f"{tab_prefix}dino_run_button")
                                 dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id=f"{tab_prefix}dino_preview_boxes_selection")
-                                dino_preview_boxes_selection.change(fn=lambda _: None, inputs=[dino_preview_boxes_selection], outputs=None, _js="dinoOnChangePreviewBoxesSelection")
                                 dino_preview_result = gr.Text(value="", show_label=False, visible=False)
 
                                 dino_preview_boxes_button.click(
@@ -372,9 +375,7 @@ class Script(scripts.Script):
 
                         mask_image = gr.Gallery(label='Segment Anything Output', show_label=False).style(grid=3)
 
-                        with gr.Row(elem_classes="generate-box"):
-                            gr.Button(value="Add dot prompt or enable GroundingDINO with text prompts to preview segmentation", elem_id=f"{tab_prefix}sam_no_button")
-                            run_button = gr.Button(value="Preview Segmentation", elem_id=f"{tab_prefix}run_button")
+                        run_button = gr.Button(value="Preview Segmentation", elem_id=f"{tab_prefix}run_button")
                         run_result = gr.Text(value="", show_label=False)
 
                         gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")

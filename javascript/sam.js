@@ -16,33 +16,6 @@ function samGetRealCoordinate(image, x1, y1) {
     }
 }
 
-function samChangeRunButton() {
-    const sam_run_button = gradioApp().getElementById(samTabPrefix() + "run_button");
-    const sam_mode = (samHasImageInput() && (samCanSubmit() || (dinoCanSubmit() && dinoPreviewCanSubmit()))) ? "block" : "none";
-    if (sam_run_button && sam_run_button.style.display != sam_mode) {
-        sam_run_button.style.display = sam_mode;
-    }
-
-    const dino_run_button = gradioApp().getElementById(samTabPrefix() + "dino_run_button");
-    const dino_mode = (samHasImageInput() && dinoCanSubmit()) ? "block" : "none";
-    if (dino_run_button && dino_run_button.style.display != dino_mode) {
-        dino_run_button.style.display = dino_mode;
-    }
-}
-
-function dinoRegisterTextObserver() {
-    const dino_text_prompt = gradioApp().getElementById(samTabPrefix() + "dino_text_prompt").querySelector("textarea")
-    const observer = new MutationObserver(mutations => {
-        mutations.forEach(mutation => {
-            if (mutation.target === dino_text_prompt) {
-                samChangeRunButton();
-            }
-        });
-    });
-    observer.observe(dino_text_prompt, { attributes: true });
-    return arguments;
-}
-
 function switchToInpaintUpload() {
     switch_to_img2img_tab(4)
     return arguments;
@@ -95,16 +68,13 @@ function samCreateDot(sam_image, image, coord, label) {
         circle.addEventListener("click", e => {
             e.stopPropagation();
             circle.remove();
-            if (gradioApp().querySelectorAll("." + samTabPrefix() + "positive").length == 0 &&
-                gradioApp().querySelectorAll("." + samTabPrefix() + "negative").length == 0) {
-                samChangeRunButton();
-            } else {
+            if (gradioApp().querySelectorAll("." + samTabPrefix() + "positive").length != 0 ||
+                gradioApp().querySelectorAll("." + samTabPrefix() + "negative").length != 0) {
                 if (samIsRealTimePreview()) {
                     samImmediatelyGenerate();
                 }
             }
         });
-        samChangeRunButton();
         if (samIsRealTimePreview()) {
             samImmediatelyGenerate();
         }
@@ -172,43 +142,6 @@ function submit_sam() {
     return res
 }
 
-function dinoPreviewCanSubmit() {
-    const dino_preview_enable_checkbox = gradioApp().getElementById(samTabPrefix() + "dino_preview_checkbox");
-    if (!dino_preview_enable_checkbox || 
-        (dino_preview_enable_checkbox.querySelector("input") &&
-        !dino_preview_enable_checkbox.querySelector("input").checked)) {
-        return true;
-    } else {
-        let dino_preview_selected = false;
-        gradioApp().getElementById(samTabPrefix() + "dino_preview_boxes_selection").querySelectorAll("input").forEach(element => dino_preview_selected = element.checked || dino_preview_selected);
-        return dino_preview_selected;
-    }
-}
-
-function dinoCanSubmit() {
-    const dino_enable_checkbox = gradioApp().getElementById(samTabPrefix() + "dino_enable_checkbox")
-    const dino_text_prompt = gradioApp().getElementById(samTabPrefix() + "dino_text_prompt")
-    return (dino_enable_checkbox && dino_text_prompt &&
-        dino_enable_checkbox.querySelector("input") &&
-        dino_enable_checkbox.querySelector("input").checked &&
-        dino_text_prompt.querySelector("textarea") &&
-        dino_text_prompt.querySelector("textarea").value != "")
-}
-
-function samCanSubmit() {
-    return (gradioApp().querySelectorAll("." + samTabPrefix() + "positive").length > 0 ||
-        gradioApp().querySelectorAll("." + samTabPrefix() + "negative").length > 0)
-}
-
-function samHasImageInput() {
-    const sam_image = gradioApp().getElementById(samTabPrefix() + "input_image")
-    return sam_image && sam_image.querySelector('img')
-}
-
-function dinoOnChangePreviewBoxesSelection() {
-    samChangeRunButton()
-}
-
 samPrevImg = {
     "txt2img_sam_": null,
     "img2img_sam_": null,
@@ -219,7 +152,6 @@ onUiUpdate(() => {
     if (sam_image) {
         const image = sam_image.querySelector('img')
         if (image && samPrevImg[samTabPrefix()] != image.src) {
-            console.log("remove points 1")
             samRemoveDots();
             samPrevImg[samTabPrefix()] = image.src;
 
@@ -243,7 +175,6 @@ onUiUpdate(() => {
             const observer = new MutationObserver(mutations => {
                 mutations.forEach(mutation => {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'src' && mutation.target === image) {
-                        console.log("remove points 2")
                         samRemoveDots();
                         samPrevImg[samTabPrefix()] = image.src;
                     }
@@ -252,11 +183,8 @@ onUiUpdate(() => {
 
             observer.observe(image, { attributes: true });
         } else if (!image) {
-            console.log("remove points 3")
             samRemoveDots();
             samPrevImg[samTabPrefix()] = null;
         }
     }
-
-    samChangeRunButton();
 })
