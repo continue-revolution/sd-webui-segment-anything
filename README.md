@@ -8,16 +8,19 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 - `2023/04/12`: [Feature] Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
 - `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](#how-to-use) and [Demo](#demo) for more detail.
 - `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](#api-support) for more detail.
-- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to the most up-to-date version to use it. ControlNet inpainting has far better performance compared to general-purpose models, and you do not need to download inpainting-specific models anymore. Check [How to Use](#how-to-use) for more detail. ControlNet demo will be released after semantic segmentation is supported.
+- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to the most up-to-date version to use it. ControlNet inpainting has far better performance compared to general-purpose models, and you do not need to download inpainting-specific models anymore. Check [How to Use](#how-to-use) for more detail.
+- `2023/04/19`: [Feature] Automatic segmentation support is on the way. It will be released very soon. It includes support for 
+    - [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) semantic segmentation
+    - Image cutting with class name (single image + batch process)
+    - Hierarchical image layer generation (such as PS layers)
+
 
 ## Plan
 
 Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
 
-- [ ] Support color inpainting as mentioned in [#21](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22)
-- [ ] Support automatic mask generation for hierarchical image segmentation and SD animation
-- [ ] Support semantic segmentation for batch process, ControlNet segmentation and SD animation
-- [ ] Connect to [ControlNet](https://github.com/Mikubill/sd-webui-controlnet) segmentation
+- [ ] Support [Edit-Anything](https://github.com/sail-sg/EditAnything)
+- [ ] Support [Rich Text to Image](https://github.com/SongweiGe/rich-text-to-image) (perhaps will be supported in another extension, perhaps will not be supported)
 - [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
 
 Not all plans may ultimately be implemented. Some ideas might not work and be abandoned. Support for old commits has low priority, so I would encourage you to update your WebUI as soon as you can.
