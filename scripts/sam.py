@@ -16,7 +16,7 @@ from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
 from segment_anything import SamPredictor, sam_model_registry
 from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
-from scripts.semantic import clear_sem_sam_cache
+from scripts.auto import clear_sem_sam_cache
 
 
 sam_model_cache = OrderedDict()
@@ -105,6 +105,7 @@ def refresh_sam_models(*inputs):
     else:
         selected = None
     return gr.Dropdown.update(choices=sam_model_list, value=selected)
+
 
 def dilate_mask(mask, dilation_amt):
     # Create a dilation kernel
@@ -331,6 +332,51 @@ def priorize_sam_scripts(is_img2img):
                 sam_idx] = scripts.scripts_txt2img.alwayson_scripts[sam_idx], scripts.scripts_txt2img.alwayson_scripts[cnet_idx]
 
 
+def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image):
+    sam_dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")
+    with gr.Column(visible=False) as dilation_column:
+        sam_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
+        sam_dilation_output_gallery = gr.Gallery(label="Expanded Mask").style(grid=3)
+        sam_dilation_submit = gr.Button(value="Update Mask")
+        sam_dilation_submit.click(
+            fn=update_mask,
+            inputs=[sam_output_mask_gallery, sam_output_chosen_mask, sam_dilation_amt, sam_input_image],
+            outputs=[sam_dilation_output_gallery])
+    sam_dilation_checkbox.change(
+        fn=gr_show,
+        inputs=[sam_dilation_checkbox],
+        outputs=[dilation_column],
+        show_progress=False)
+    return sam_dilation_checkbox, sam_dilation_output_gallery
+
+
+def ui_inpaint(is_img2img, max_cn):
+    with gr.Row():
+        img2img_inpaint_upload_enable_copy_label = "Copy to Inpaint Upload" if is_img2img else "Please go to img2img to copy to inpaint upload."
+        img2img_inpaint_upload_enable_copy = gr.Checkbox(value=False, label=img2img_inpaint_upload_enable_copy_label, interactive=is_img2img)
+    with gr.Row(visible=(max_cn > 0)):
+        cnet_inpaint_copy_enable = gr.Checkbox(value=False, label='Copy to ControlNet Inpaint')
+        cnet_inpaint_invert = gr.Checkbox(value=False, label='ControlNet inpaint not masked')
+        cnet_inpaint_idx = gr.Radio(value="0" if max_cn > 0 else None, choices=[str(i) for i in range(max_cn)], label='ControlNet Inpaint Index', type="index")
+    # TODO: Create color inpainting ui
+    return img2img_inpaint_upload_enable_copy, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx
+
+
+def ui_batch(is_dino):
+    dino_batch_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)")
+    dino_batch_source_dir = gr.Textbox(label="Source directory")
+    dino_batch_dest_dir = gr.Textbox(label="Destination directory")
+    with gr.Row():
+        dino_batch_output_per_image = gr.Radio(choices=["1", "3"], value="3", type="index", label="Output per image: ", visible=is_dino)
+        dino_batch_save_image = gr.Checkbox(value=True, label="Save masked image")
+        dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
+        dino_batch_save_image_with_mask = gr.Checkbox(value=True, label="Save original image with mask and bounding box")
+        dino_batch_save_background = gr.Checkbox(value=False, label="Save background instead of foreground")
+    dino_batch_run_button = gr.Button(value="Start batch process")
+    dino_batch_progress = gr.Text(value="", show_label=False)
+    return dino_batch_dilation_amt, dino_batch_source_dir, dino_batch_dest_dir, dino_batch_output_per_image, dino_batch_save_image, dino_batch_save_mask, dino_batch_save_image_with_mask, dino_batch_save_background, dino_batch_run_button, dino_batch_progress
+
+
 class Script(scripts.Script):
 
     def title(self):
@@ -343,181 +389,210 @@ class Script(scripts.Script):
         if self.max_cn_num() > 0:
             priorize_sam_scripts(is_img2img)
         tab_prefix = ("img2img" if is_img2img else "txt2img") + "_sam_"
+        ui_process = ()
         with gr.Accordion('Segment Anything', open=False):
             with gr.Row():
                 sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
-                refresh_models = ToolButton(value=refresh_symbol)
-                refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+                sam_refresh_models = ToolButton(value=refresh_symbol)
+                sam_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
             with gr.Tabs():
                 with gr.TabItem(label="Single Image"):
-                    with gr.Column():
-                        gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
-                        input_image = gr.Image(label="Image for Segment Anything", elem_id=f"{tab_prefix}input_image", show_label=False, source="upload", type="pil", image_mode="RGBA")
-                        remove_dots = gr.Button(value="Remove all point prompts")
-                        dummy_component = gr.Label(visible=False)
-
-                        gr.HTML(value="<p>GroundingDINO + Segment Anything can achieve [text prompt]->[object detection]->[segmentation]</p>")
-                        dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id=f"{tab_prefix}dino_enable_checkbox")
-                        with gr.Column(visible=False) as dino_column:
-                            gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
-                            dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
-                            text_prompt = gr.Textbox(placeholder="You must enter text prompts to enable groundingdino. Otherwise this extension will fall back to point prompts only.", label="GroundingDINO Detection Prompt", elem_id=f"{tab_prefix}dino_text_prompt")
-                            box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
-                            dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id=f"{tab_prefix}dino_preview_checkbox")
-                            with gr.Column(visible=False) as dino_preview:
-                                dino_preview_boxes = gr.Image(label="Image for GroundingDINO", show_label=False, type="pil", image_mode="RGBA")
-                                dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id=f"{tab_prefix}dino_run_button")
-                                dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id=f"{tab_prefix}dino_preview_boxes_selection")
-                                dino_preview_result = gr.Text(value="", show_label=False, visible=False)
-
-                                dino_preview_boxes_button.click(
-                                    fn=dino_predict,
-                                    _js="submit_dino",
-                                    inputs=[input_image, dino_model_name, text_prompt, box_threshold],
-                                    outputs=[dino_preview_boxes, dino_preview_boxes_selection, dino_preview_result])
-
-                        mask_image = gr.Gallery(label='Segment Anything Output', show_label=False).style(grid=3)
-
-                        run_button = gr.Button(value="Preview Segmentation", elem_id=f"{tab_prefix}run_button")
-                        run_result = gr.Text(value="", show_label=False)
-
+                    gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
+                    sam_input_image = gr.Image(label="Image for Segment Anything", elem_id=f"{tab_prefix}input_image", show_label=False, source="upload", type="pil", image_mode="RGBA")
+                    sam_remove_dots = gr.Button(value="Remove all point prompts")
+                    sam_dummy_component = gr.Label(visible=False)
+                    sam_remove_dots.click(
+                        fn=lambda _: None,
+                        _js="samRemoveDots",
+                        inputs=[sam_dummy_component],
+                        outputs=None)
+                    gr.HTML(value="<p>GroundingDINO + Segment Anything can achieve [text prompt]->[object detection]->[segmentation]</p>")
+                    dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id=f"{tab_prefix}dino_enable_checkbox")
+                    with gr.Column(visible=False) as dino_column:
+                        gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
+                        dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
+                        dino_text_prompt = gr.Textbox(placeholder="You must enter text prompts to enable groundingdino. Otherwise this extension will fall back to point prompts only.", label="GroundingDINO Detection Prompt", elem_id=f"{tab_prefix}dino_text_prompt")
+                        dino_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
+                        dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id=f"{tab_prefix}dino_preview_checkbox")
+                        with gr.Column(visible=False) as dino_preview:
+                            dino_preview_boxes = gr.Image(label="Image for GroundingDINO", show_label=False, type="pil", image_mode="RGBA")
+                            dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id=f"{tab_prefix}dino_run_button")
+                            dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id=f"{tab_prefix}dino_preview_boxes_selection")
+                            dino_preview_result = gr.Text(value="", show_label=False, visible=False)
+                            dino_preview_boxes_button.click(
+                                fn=dino_predict,
+                                _js="submit_dino",
+                                inputs=[sam_input_image, dino_model_name, dino_text_prompt, dino_box_threshold],
+                                outputs=[dino_preview_boxes, dino_preview_boxes_selection, dino_preview_result])
+                        dino_preview_checkbox.change(
+                            fn=gr_show,
+                            inputs=[dino_preview_checkbox],
+                            outputs=[dino_preview],
+                            show_progress=False)
+                    dino_checkbox.change(
+                        fn=gr_show,
+                        inputs=[dino_checkbox],
+                        outputs=[dino_column],
+                        show_progress=False)
+                    sam_output_mask_gallery = gr.Gallery(label='Segment Anything Output', show_label=False).style(grid=3)
+                    sam_submit = gr.Button(value="Preview Segmentation", elem_id=f"{tab_prefix}run_button")
+                    sam_result = gr.Text(value="", show_label=False)
+                    sam_submit.click(
+                        fn=sam_predict,
+                        _js='submit_sam',
+                        inputs=[sam_model_name, sam_input_image,        # SAM
+                                sam_dummy_component, sam_dummy_component,   # Point prompts
+                                dino_checkbox, dino_model_name, dino_text_prompt, dino_box_threshold,  # DINO prompts
+                                dino_preview_checkbox, dino_preview_boxes_selection],  # DINO preview prompts
+                        outputs=[sam_output_mask_gallery, sam_result])
+                    with gr.Row():
                         gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")
-                            
-                        with gr.Row():
-                            enable_copy_inpaint_label = "Copy to Inpaint Upload" if is_img2img else "Please go to img2img to copy to inpaint upload."
-                            enable_copy_inpaint = gr.Checkbox(value=False, label=enable_copy_inpaint_label, interactive=is_img2img)
-                            chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
-                        
-                        with gr.Row(visible=(self.max_cn_num() > 0)):
-                            enable_copy_cn_inpaint = gr.Checkbox(value=False, label='Copy to ControlNet Inpaint')
-                            cn_num = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
-
-                        dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")
-                        with gr.Column(visible=False) as dilation_column:
-                            dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)", elem_id="dilation_amt")
-                            expanded_mask_image = gr.Gallery(label="Expanded Mask").style(grid=3)
-                            update_mask_button = gr.Button(value="Update Mask")
-                        
-                        # switch = gr.Button(value="Switch to Inpaint Upload")
+                        sam_output_chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
+                    img2img_inpaint_upload_enable_copy, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
+                    sam_dilation_checkbox, sam_dilation_output_gallery = ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image)
+                    sam_single_image_process = (img2img_inpaint_upload_enable_copy, sam_input_image, sam_output_mask_gallery, sam_output_chosen_mask, sam_dilation_checkbox, sam_dilation_output_gallery, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx)
+                    ui_process += sam_single_image_process
                         
                 with gr.TabItem(label="Batch Process"):
-                    gr.HTML(value="<p>You may configurate the following items and generate masked image for all images under a directory. This mode is designed for generating LoRA/LyCORIS training set.</p>")
-                    gr.HTML(value="<p>The current workflow is [text prompt]->[object detection]->[segmentation]. Semantic segmentation support is in Auto SAM panel.</p>")
-                    batch_dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
-                    batch_text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt")
-                    batch_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
-                    batch_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)")
-                    dino_batch_source_dir = gr.Textbox(label="Source directory")
-                    dino_batch_dest_dir = gr.Textbox(label="Destination directory")
-                    with gr.Row():
-                        dino_batch_output_per_image = gr.Radio(choices=["1", "3"], value="3", type="index", label="Output per image: ")
-                        dino_batch_save_image = gr.Checkbox(value=True, label="Save masked image")
-                        dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
-                        dino_batch_save_image_with_mask = gr.Checkbox(value=True, label="Save original image with mask and bounding box")
-                        dino_batch_save_background = gr.Checkbox(value=False, label="Save background instead of foreground")
-                    dino_batch_run_button = gr.Button(value="Start batch process")
-                    dino_batch_progress = gr.Text(value="", show_label=False)
+                    gr.Markdown(value="You may configurate the following items and generate masked image for all images under a directory. This mode is designed for generating LoRA/LyCORIS training set.")
+                    gr.Markdown(value="The current workflow is [text prompt]->[object detection]->[segmentation]. Semantic segmentation support is in Auto SAM panel.")
+                    dino_batch_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
+                    dino_batch_text_prompt = gr.Textbox(label="GroundingDINO Detection Prompt")
+                    dino_batch_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
+                    dino_batch_dilation_amt, dino_batch_source_dir, dino_batch_dest_dir, dino_batch_output_per_image, dino_batch_save_image, dino_batch_save_mask, dino_batch_save_image_with_mask, dino_batch_save_background, dino_batch_run_button, dino_batch_progress = ui_batch(True)
                     dino_batch_run_button.click(
                         fn=dino_batch_process,
-                        inputs=[sam_model_name, batch_dino_model_name, batch_text_prompt, batch_box_threshold, batch_dilation_amt,
-                                dino_batch_source_dir, dino_batch_dest_dir,
-                                dino_batch_output_per_image, 
-                                dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, 
-                                dino_batch_save_image_with_mask],
-                        outputs=[dino_batch_progress]
-                    )
+                        inputs=[sam_model_name, dino_batch_model_name, dino_batch_text_prompt, dino_batch_box_threshold, dino_batch_dilation_amt,
+                                dino_batch_source_dir, dino_batch_dest_dir, dino_batch_output_per_image, 
+                                dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask],
+                        outputs=[dino_batch_progress])
                     
                 with gr.TabItem(label="Auto SAM"):
-                    gr.HTML("<p>Auto SAM is mainly for semantic segmentation, which is supported based on ControlNet. You must have ControlNet extension installed, and you should not change its filename.</p>")
-                    gr.HTML("<p>The annotator directory inside the SAM extension directory is only a symbolic link, which means that it will not occupy much space.</p>")
-                    
-                
-                # with gr.TabItem(label="Upload mask to ControlNet inpainting"):
-                #     gr.HTML("<p>This panel is for those who want to upload mask to ControlNet inpainting. It is not part of SAM's functionality. By checking the box below, you agree that you will disable all functionalities of SAM.</p>")
-                #     gr.HTML("<p>This panel will exist until ControlNet Inpainting support uploading human-painted masks. It is not something related to SAM, but it is beneficial to Stable Diffusion community.</p>")
-                #     with gr.Row():
-                #         cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to ControlNet inpaint.")
-                #         cnet_upload_to_img2img_enable = gr.Checkbox(value=False, visible=is_img2img, label="Also upload to img2img inpainting upload.")
-                #         cnet_upload_num = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
-                #     with gr.Column(visible=False) as cnet_upload_panel:
-                #         cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
-                #         cnet_upload_mask_inpaint = gr.Image(label="Mask for ControlNet Inpaint", source="upload", interactive=True, type="pil")
-                #     cnet_upload_enable.change(
-                #         fn=gr_show,
-                #         inputs=[cnet_upload_enable],
-                #         outputs=[cnet_upload_panel],
-                #         show_progress=False)
-                
-                switch = gr.Button(value="Switch to Inpaint Upload")
-                unload = gr.Button(value="Unload all models from memory")
+                    gr.Markdown("Auto SAM is mainly for semantic segmentation and image layout generation, which is supported based on ControlNet. You must have ControlNet extension installed, and you should not change its directory name (sd-webui-controlnet).")
+                    gr.Markdown("The annotator directory inside the SAM extension directory is only a symbolic link. This is to save your space and make the extension repository clean.")
 
-            run_button.click(
-                fn=sam_predict,
-                _js='submit_sam',
-                inputs=[sam_model_name, input_image,        # SAM
-                        dummy_component, dummy_component,   # Point prompts
-                        dino_checkbox, dino_model_name, text_prompt, box_threshold, # DINO prompts
-                        dino_preview_checkbox, dino_preview_boxes_selection],  # DINO preview prompts
-                outputs=[mask_image, run_result])
-            
-            dino_checkbox.change(
-                fn=gr_show,
-                inputs=[dino_checkbox],
-                outputs=[dino_column],
-                show_progress=False)
+                    with gr.Accordion(label="Auto SAM Config", open=False):
+                        gr.Markdown("You may configurate automatic sam generation. See [here](https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/automatic_mask_generator.py#L35-L96) for explanation of each parameter. If you still cannot understand, use default.")
+                        with gr.Row():
+                            auto_sam_points_per_side = gr.Number(label="points_per_side", value=32, precision=0)
+                            auto_sam_points_per_batch = gr.Number(label="points_per_batch", value=64, precision=0)
+                            auto_sam_pred_iou_thresh = gr.Slider(minimum=0, maximum=1, value=0.88, step=0.01, label="pred_iou_thresh")
+                            auto_sam_stability_score_thresh = gr.Slider(minimum=0, maximum=1, value=0.95, step=0.01, label="stability_score_thresh")
+                            auto_sam_stability_score_offset = gr.Number(label="stability_score_offset", value=1)
+                        with gr.Row():
+                            auto_sam_box_nms_thresh = gr.Slider(label="box_nms_thresh", value=0.7, minimum=0, maximum=1, step=0.01)
+                            auto_sam_crop_n_layers = gr.Number(label="crop_n_layers", value=0, precision=0)
+                            auto_sam_crop_nms_thresh = gr.Slider(label="crop_nms_thresh", value=0.7, minimum=0, maximum=1, step=0.01)
+                            auto_sam_crop_overlap_ratio = gr.Slider(label="crop_overlap_ratio", value=512/1500, minimum=0, maximum=1, step=0.01)
+                            auto_sam_crop_n_points_downscale_factor = gr.Number(label="crop_n_points_downscale_factor", value=1, precision=0)
+                        auto_sam_min_mask_region_area = gr.Number(label="min_mask_region_area", value=0, precision=0)
+                        auto_sam_config = (auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+                                           auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+                                           auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+                                           auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area)
+                            
+                    with gr.Tabs():
+                        with gr.TabItem(label="ControlNet"):
+                            gr.Markdown("You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
+                            with gr.Row():
+                                cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", type="index", label="Choose preprocessor for semantic segmentation: ")
+                                cnet_seg_processor_resolution = gr.Slider(label="Preprocessor resolution", value=512, minimum=64, maximum=2048, step=1)
+                            cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", show_label=False, source="upload", type="pil", image_mode="RGBA")
+                            cnet_seg_output_gallery = gr.Gallery(label="Auto Segmentation Output").style(grid=3)
+                            cnet_seg_submit = gr.Button(value="Generate segmentation image")
+                            cnet_seg_submit.click(
+                                fn=None,
+                                inputs=[sam_model_name, cnet_seg_input_image, cnet_seg_processor, cnet_seg_processor_resolution, *auto_sam_config],
+                                outputs=[cnet_seg_output_gallery])
+                            with gr.Row(visible=(self.max_cn_num() > 0)):
+                                cnet_seg_enable_copy = gr.Checkbox(value=False, label='Copy to ControlNet Segmentation')
+                                cnet_seg_idx = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Segmentation Index', type="index")
+                            auto_sam_process = (cnet_seg_output_gallery, cnet_seg_enable_copy, cnet_seg_idx)
+                            ui_process += auto_sam_process
 
-            dino_preview_checkbox.change(
-                fn=gr_show,
-                inputs=[dino_preview_checkbox],
-                outputs=[dino_preview],
-                show_progress=False)
-            
-            switch.click(
-                fn=lambda _: None,
-                _js="switchToInpaintUpload",
-                inputs=[dummy_component],
-                outputs=None)
+                        with gr.TabItem(label="Image Layout"):
+                            gr.Markdown("You can generate image layout either in single image or in batch.")
+                            # TODO: Image layout UI
 
-            remove_dots.click(
-                fn=lambda _: None,
-                _js="samRemoveDots",
-                inputs=[dummy_component],
-                outputs=None)
-            
-            unload.click(
-                fn=clear_cache,
-                inputs=[],
-                outputs=[])
+                        with gr.TabItem(label="Mask by Category"):
+                            gr.Markdown("You can mask images by their categories via semantic segmentation. Please enter category ids (integers), separated by `+`. Visit [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/oneformer/data/datasets/register_ade20k_panoptic.py#L12-L207) for ade20k and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map.")
+                            crop_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", type="index", label="Choose preprocessor for semantic segmentation: ")
+                            crop_category_input = gr.Textbox(placeholder="Enter categody ids, separated by +. For example, if you want bed+person, your input should be 7+12 for ade20k and 65+1 for coco.", label="Enter category IDs")
+                            with gr.Tabs():
+                                with gr.TabItem(label="Single Image"):
+                                    crop_input_image = gr.Image(label="Image to be masked", show_label=False, source="upload", type="pil", image_mode="RGBA")
+                                    crop_output_gallery = gr.Gallery(label="Output").style(grid=3)
+                                    crop_padding = gr.Number(value=-2, visible=False, interactive=False)
+                                    crop_submit = gr.Button(value="Generate mask")
+                                    crop_result = gr.Text(value="", show_label=False)
+                                    crop_submit.click(
+                                        fn=None, # TODO
+                                        inputs=[sam_model_name, crop_input_image, crop_processor, crop_category_input, *auto_sam_config],
+                                        outputs=[crop_output_gallery, crop_result])
+                                    crop_img2img_inpaint_enable, crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
+                                    crop_dilation_checkbox, crop_dilation_output_gallery = ui_dilation(crop_output_gallery, crop_padding, crop_input_image)
+                                    crop_single_image_process = (crop_img2img_inpaint_enable, crop_input_image, crop_output_gallery, crop_dilation_checkbox, crop_dilation_output_gallery, crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx)
+                                    ui_process += crop_single_image_process
 
-            dilation_checkbox.change(
-                fn=gr_show,
-                inputs=[dilation_checkbox],
-                outputs=[dilation_column],
-                show_progress=False)
+                                with gr.TabItem(label="Batch Process"):
+                                    crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, _, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, crop_batch_run_button, crop_batch_progress = ui_batch(False)
+                                    crop_batch_run_button.click(
+                                        fn=None, # TODO
+                                        inputs=[sam_model_name, crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background],
+                                        outputs=[crop_batch_progress])
 
-            update_mask_button.click(
-                fn=update_mask,
-                inputs=[mask_image, chosen_mask, dilation_amt, input_image],
-                outputs=[expanded_mask_image])
+                with gr.TabItem(label="Upload Mask to ControlNet Inpainting"):
+                    gr.Markdown("This panel is for those who want to upload mask to ControlNet inpainting. It is not part of SAM's functionality. By checking the box below, you agree that you will disable all functionalities of SAM.")
+                    gr.Markdown("This panel will exist until ControlNet Inpainting support uploading human-painted masks. It is not something related to SAM, but it is beneficial to Stable Diffusion community.")
+                    with gr.Row():
+                        cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to ControlNet inpaint.")
+                        cnet_upload_invert = gr.Checkbox(value=False, label="ControlNet inpaint not masked")
+                        cnet_upload_num = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
+                        cnet_upload_to_img2img_enable = gr.Checkbox(value=False, visible=is_img2img, label="Also upload to img2img inpainting upload.")
+                    with gr.Column(visible=False) as cnet_upload_panel:
+                        cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
+                        cnet_upload_mask_inpaint = gr.Image(label="Mask for ControlNet Inpaint", source="upload", interactive=True, type="pil")
+                    cnet_upload_enable.change(
+                        fn=gr_show,
+                        inputs=[cnet_upload_enable],
+                        outputs=[cnet_upload_panel],
+                        show_progress=False)
+                    cnet_upload_process = (cnet_upload_enable, cnet_upload_invert, cnet_upload_num, cnet_upload_to_img2img_enable, cnet_upload_img_inpaint, cnet_upload_mask_inpaint)
+                    # TODO: Create color inpainting panel for both img2img and cnet
+                    ui_process += cnet_upload_process
+
+                with gr.Row():
+                    switch = gr.Button(value="Switch to Inpaint Upload")
+                    unload = gr.Button(value="Unload all models from memory")
+                    switch.click(
+                        fn=lambda _: None,
+                        _js="switchToInpaintUpload",
+                        inputs=[sam_dummy_component],
+                        outputs=None)
+                    unload.click(
+                        fn=clear_cache,
+                        inputs=[],
+                        outputs=[])
         
-        return [enable_copy_inpaint, input_image, mask_image, chosen_mask, dilation_checkbox, expanded_mask_image, enable_copy_cn_inpaint, cn_num]
-                # cnet_upload_enable, cnet_upload_to_img2img_enable, cnet_upload_num, cnet_upload_img_inpaint, cnet_upload_mask_inpaint]
+        return ui_process
 
-    def process(self, p: StableDiffusionProcessingImg2Img, 
-                enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0):
+    def process(self, p: StableDiffusionProcessingImg2Img, *args):
+                # enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0):
                 # cnet_upload_enable=False, cnet_upload_to_img2img_enable=False, cnet_upload_num=0, cnet_upload_img_inpaint=None, cnet_upload_mask_inpaint=None):
+        pass # TODO
         # if cnet_upload_enable:
         #     if cnet_upload_to_img2img_enable:
         #         p.init_images = [cnet_upload_img_inpaint]
         #         p.image_mask = cnet_upload_mask_inpaint
         #     self.set_p_value(p, 'control_net_input_image', cnet_upload_num, {"image": cnet_upload_img_inpaint, "mask": cnet_upload_mask_inpaint.convert("L")})
-        if input_image is not None and mask is not None:
-            image_mask = Image.open(expanded_mask[1]['name'] if dilation_enabled and expanded_mask is not None else mask[chosen_mask + 3]['name'])
-            if enable_copy_inpaint and isinstance(p, StableDiffusionProcessingImg2Img):
-                p.init_images = [input_image]
-                p.image_mask = image_mask
-            if enable_copy_cn_inpaint and cn_num < self.max_cn_num():
-                self.set_p_value(p, 'control_net_input_image', cn_num, {"image": input_image, "mask": image_mask.convert("L")})
+        
+        # if input_image is not None and mask is not None:
+        #     image_mask = Image.open(expanded_mask[1]['name'] if dilation_enabled and expanded_mask is not None else mask[chosen_mask + 3]['name'])
+        #     if enable_copy_inpaint and isinstance(p, StableDiffusionProcessingImg2Img):
+        #         p.init_images = [input_image]
+        #         p.image_mask = image_mask
+        #     if enable_copy_cn_inpaint and cn_num < self.max_cn_num():
+        #         self.set_p_value(p, 'control_net_input_image', cn_num, {"image": input_image, "mask": image_mask.convert("L")})
         
     def set_p_value(self, p: StableDiffusionProcessing, attr: str, idx: int, v):
         value = getattr(p, attr, None)

@@ -94,7 +94,6 @@ def semantic_segmentation(
     crop_nms_thresh=0.7,
     crop_overlap_ratio=512 / 1500,
     crop_n_points_downscale_factor=1,
-    point_grids=None,
     min_mask_region_area=100):
     global global_sam
     global_sam = SamAutomaticMaskGenerator(
@@ -102,7 +101,7 @@ def semantic_segmentation(
         pred_iou_thresh, stability_score_thresh, 
         stability_score_offset, box_nms_thresh, 
         crop_n_layers, crop_nms_thresh, crop_overlap_ratio, 
-        crop_n_points_downscale_factor, point_grids, 
+        crop_n_points_downscale_factor, None, 
         min_mask_region_area, "coco_rle")
     try:
         import annotator.uniformer as uniformer
