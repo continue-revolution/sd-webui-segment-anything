@@ -376,12 +376,12 @@ def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image
 
 
 def ui_inpaint(is_img2img, max_cn):
-    img2img_inpaint_upload_enable_copy_label = "Copy to Inpaint Upload" if is_img2img else "Please go to img2img to copy to inpaint upload."
-    img2img_inpaint_upload_enable_copy = gr.Checkbox(value=False, label=img2img_inpaint_upload_enable_copy_label, interactive=is_img2img)
-    with FormRow(visible=(max_cn > 0)):
-        cnet_inpaint_copy_enable = gr.Checkbox(value=False, label='Copy to ControlNet Inpaint')
-        cnet_inpaint_invert = gr.Checkbox(value=False, label='ControlNet inpaint not masked')
-        cnet_inpaint_idx = gr.Radio(value="0" if max_cn > 0 else None, choices=[str(i) for i in range(max_cn)], label='ControlNet Inpaint Index', type="index")
+    with FormRow():
+        img2img_inpaint_upload_enable_copy_label = "Copy to Inpaint Upload" if is_img2img else "Please go to img2img to copy to inpaint upload."
+        img2img_inpaint_upload_enable_copy = gr.Checkbox(value=False, label=img2img_inpaint_upload_enable_copy_label, interactive=is_img2img)
+        cnet_inpaint_copy_enable = gr.Checkbox(value=False, label='Copy to ControlNet Inpaint', visible=(max_cn > 0))
+        cnet_inpaint_invert = gr.Checkbox(value=False, label='ControlNet inpaint not masked', visible=(max_cn > 0))
+        cnet_inpaint_idx = gr.Radio(value="0" if max_cn > 0 else None, choices=[str(i) for i in range(max_cn)], label='ControlNet Inpaint Index', type="index", visible=(max_cn > 0))
     return img2img_inpaint_upload_enable_copy, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx
 
 
@@ -469,8 +469,8 @@ class Script(scripts.Script):
                                 dino_preview_checkbox, dino_preview_boxes_selection],  # DINO preview prompts
                         outputs=[sam_output_mask_gallery, sam_result])
                     with FormRow():
-                        gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")
                         sam_output_chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
+                        gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")
                     img2img_inpaint_upload_enable_copy, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
                     sam_dilation_checkbox, sam_dilation_output_gallery = ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image)
                     sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_color_sketch_orig, sam_inpaint_mask_blur, sam_inpaint_mask_alpha = ui_sketch(sam_input_image)
