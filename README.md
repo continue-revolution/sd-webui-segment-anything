@@ -16,7 +16,10 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
     - [Edit-Anything](https://github.com/sail-sg/EditAnything) un-semantic segmentation
     - Image cutting with class name (single image + batch process)
     - Image layout generation (such as PS layers) (single image + batch process)
-    - Colorful inpainting for img2img and mask color inversion for inpainting
+    - Some side features:
+        - Colorful inpainting for img2img
+        - Draw un-masked region for ControlNet inpainting
+        - Draw colorful mask once for both cnet and img2img
 
 ## Plan
 
