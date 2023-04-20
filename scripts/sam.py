@@ -20,15 +20,12 @@ from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, cle
 from scripts.auto import clear_sem_sam_cache
 
 
+refresh_symbol = '\U0001f504'       # 🔄
 sam_model_cache = OrderedDict()
 scripts_sam_model_dir = os.path.join(scripts.basedir(), "models/sam") 
 sd_sam_model_dir = os.path.join(models_path, "sam")
 sam_model_dir = sd_sam_model_dir if os.path.exists(sd_sam_model_dir) else scripts_sam_model_dir 
-sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
-    os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
-
-
-refresh_symbol = '\U0001f504'       # 🔄
+sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
 
 
 class ToolButton(gr.Button, gr.components.FormComponent):
@@ -179,7 +176,6 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             boxes=transformed_boxes.to(device),
             multimask_output=True,
         )
-        
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
     else:
         num_box = 0 if boxes_filt is None else boxes_filt.shape[0]
@@ -193,7 +189,6 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         print(sam_predict_status)
         point_coords = np.array(positive_points + negative_points)
         point_labels = np.array([1] * len(positive_points) + [0] * len(negative_points))
-
         box = copy.deepcopy(boxes_filt[0].numpy()) if boxes_filt is not None and boxes_filt.shape[0] > 0 else None
         masks, _, _ = predictor.predict(
             point_coords=point_coords if len(point_coords) > 0 else None,
@@ -201,16 +196,13 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             box=box,
             multimask_output=True,
         )
-
         masks = masks[:, None, ...]
 
     garbage_collect(sam)
-
     print("Creating output image")
     mask_images = []
     masks_gallery = []
     matted_images = []
-    
     boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
     for mask in masks:
         masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
@@ -334,7 +326,7 @@ def priorize_sam_scripts(is_img2img):
 
 
 def ui_sketch_inner():
-    sam_inpaint_color_sketch = gr.Image(label="Color sketch inpainting", show_label=False, source="upload", interactive=True, type="pil", tool="color-sketch", image_mode="RGBA")
+    sam_inpaint_color_sketch = gr.Image(label="Color sketch inpainting", source="upload", interactive=True, type="pil", tool="color-sketch", image_mode="RGBA")
     sam_inpaint_color_sketch_orig = gr.State(None)
     with FormRow():
         sam_inpaint_mask_blur = gr.Slider(label='Mask blur', minimum=0, maximum=64, step=1, value=4)
@@ -429,7 +421,7 @@ class Script(scripts.Script):
             with gr.Tabs():
                 with gr.TabItem(label="Single Image"):
                     gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
-                    sam_input_image = gr.Image(label="Image for Segment Anything", elem_id=f"{tab_prefix}input_image", show_label=False, source="upload", type="pil", image_mode="RGBA")
+                    sam_input_image = gr.Image(label="Image for Segment Anything", elem_id=f"{tab_prefix}input_image", source="upload", type="pil", image_mode="RGBA")
                     sam_remove_dots = gr.Button(value="Remove all point prompts")
                     sam_dummy_component = gr.Label(visible=False)
                     sam_remove_dots.click(
@@ -446,7 +438,7 @@ class Script(scripts.Script):
                         dino_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
                         dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id=f"{tab_prefix}dino_preview_checkbox")
                         with gr.Column(visible=False) as dino_preview:
-                            dino_preview_boxes = gr.Image(label="Image for GroundingDINO", show_label=False, type="pil", image_mode="RGBA")
+                            dino_preview_boxes = gr.Image(label="Image for GroundingDINO", type="pil", image_mode="RGBA")
                             dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id=f"{tab_prefix}dino_run_button")
                             dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id=f"{tab_prefix}dino_preview_boxes_selection")
                             dino_preview_result = gr.Text(value="", label="GroundingDINO preview status", visible=False)
@@ -465,7 +457,7 @@ class Script(scripts.Script):
                         inputs=[dino_checkbox],
                         outputs=[dino_column],
                         show_progress=False)
-                    sam_output_mask_gallery = gr.Gallery(label='Segment Anything Output', show_label=False).style(grid=3)
+                    sam_output_mask_gallery = gr.Gallery(label='Segment Anything Output').style(grid=3)
                     sam_submit = gr.Button(value="Preview Segmentation", elem_id=f"{tab_prefix}run_button")
                     sam_result = gr.Text(value="", label="Segment Anything status")
                     sam_submit.click(
@@ -533,7 +525,7 @@ class Script(scripts.Script):
                             with gr.Row():
                                 cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", type="index", label="Choose preprocessor for semantic segmentation: ")
                                 cnet_seg_processor_resolution = gr.Slider(label="Preprocessor resolution", value=512, minimum=64, maximum=2048, step=1)
-                            cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", show_label=False, source="upload", type="pil", image_mode="RGBA")
+                            cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
                             cnet_seg_output_gallery = gr.Gallery(label="Auto Segmentation Output").style(grid=3)
                             cnet_seg_submit = gr.Button(value="Generate segmentation image")
                             cnet_seg_submit.click(
@@ -549,7 +541,7 @@ class Script(scripts.Script):
                         with gr.TabItem(label="Image Layout"):
                             gr.Markdown("You can generate image layout either in single image or in batch. Since there might be A LOT of outputs, there is no gallery for review. You need to go to the output folder for either single image or batch process.")
                             layout_mode = gr.Radio(choices=["single image", "batch process"], value="single image", type="index", label="Choose mode: ")
-                            layout_input_image = gr.Image(label="Image for Image Layout", show_label=False, source="upload", type="pil", image_mode="RGBA")
+                            layout_input_image = gr.Image(label="Image for Image Layout", source="upload", type="pil", image_mode="RGBA")
                             layout_input_path = gr.Textbox(label="Input path", placeholder="Enter input path", visible=False)
                             layout_output_path = gr.Textbox(label="Output path", placeholder="Enter output path")
                             layout_submit_single = gr.Button(value="Generate layout for single image")
@@ -577,7 +569,7 @@ class Script(scripts.Script):
                             crop_category_input = gr.Textbox(placeholder="Enter categody ids, separated by +. For example, if you want bed+person, your input should be 7+12 for ade20k and 65+1 for coco.", label="Enter category IDs")
                             with gr.Tabs():
                                 with gr.TabItem(label="Single Image"):
-                                    crop_input_image = gr.Image(label="Image to be masked", show_label=False, source="upload", type="pil", image_mode="RGBA")
+                                    crop_input_image = gr.Image(label="Image to be masked", source="upload", type="pil", image_mode="RGBA")
                                     crop_output_gallery = gr.Gallery(label="Output").style(grid=3)
                                     crop_padding = gr.Number(value=-2, visible=False, interactive=False)
                                     crop_submit = gr.Button(value="Generate mask")
@@ -613,9 +605,9 @@ class Script(scripts.Script):
                         cnet_upload_to_img2img_enable = gr.Checkbox(value=False, visible=is_img2img, label="Also upload to img2img inpainting upload.")
                     with gr.Column(visible=False) as cnet_upload_panel:
                         if is_img2img:
-                            cnet_upload_choice = gr.Radio(choices=["Upload", "Draw"], value="Upload", type="index", label="Choose upload mask or draw mask: ")
+                            cnet_upload_choice = gr.Radio(choices=["Upload", "Draw"], value="Upload", type="index")
                         with gr.Row() as cnet_upload_row:
-                            cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
+                            cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", source="upload", interactive=True, type="pil")
                             cnet_upload_mask_inpaint = gr.Image(label="Mask for ControlNet Inpaint", source="upload", interactive=True, type="pil")
                         if is_img2img:
                             with gr.Column(visible=False) as cnet_draw_panel:
