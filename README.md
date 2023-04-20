@@ -14,8 +14,8 @@ This extension aim for helping [stable diffusion webui](https://github.com/AUTOM
 - `2023/04/20`: [Feature] Automatic segmentation support is on the way. It will be released very soon. It includes support for 
     - [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) semantic segmentation
     - [Edit-Anything](https://github.com/sail-sg/EditAnything) un-semantic segmentation
-    - Image cutting with class name (single image + batch process)
-    - Image layout generation (such as PS layers) (single image + batch process)
+    - Image masking with categories (single image + batch process)
+    - Image layout generation (single image + batch process)
     - Some side features:
         - Colorful inpainting for img2img
         - Draw un-masked region for ControlNet inpainting
