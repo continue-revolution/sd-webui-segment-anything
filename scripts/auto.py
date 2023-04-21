@@ -16,6 +16,34 @@ original_uniformer_inference_segmentor = None
 original_oneformer_draw_sem_seg = None
 
 
+def blend_image_and_seg(image, seg, alpha=0.5):
+    image_blend = np.array(image) * (1 - alpha) + np.array(seg) * alpha
+    return Image.fromarray(image_blend.astype(np.uint8))
+
+
+def create_symbolic_link():
+    cnet_annotator_dir = os.path.join(extensions_dir, "sd-webui-controlnet/annotator")
+    if os.path.isdir(cnet_annotator_dir):
+        if not os.path.isdir(os.path.join(scripts.basedir(), "annotator")):
+            os.symlink(cnet_annotator_dir, scripts.basedir())
+        return True
+    return False
+
+
+def clear_sem_sam_cache():
+    sem_seg_cache.clear()
+    gc.collect()
+    torch_gc()
+    
+
+def sem_sam_garbage_collect():
+    if shared.cmd_opts.lowvram:
+        for _, model in sem_seg_cache:
+            model.unload_model()
+    gc.collect()
+    torch_gc()
+
+
 def strengthen_sem_seg(class_ids, img):
     import pycocotools.mask as maskUtils
     semantc_mask = class_ids.clone()
@@ -79,34 +107,6 @@ def _oneformer(img, dataset="coco"):
         sem_seg_cache[oneformer_key] = OneformerDetector(OneformerDetector.configs[dataset])
     result = sem_seg_cache[oneformer_key](img)
     return result, True
-
-
-def create_symbolic_link():
-    cnet_annotator_dir = os.path.join(extensions_dir, "sd-webui-controlnet/annotator")
-    if os.path.isdir(cnet_annotator_dir):
-        if not os.path.isdir(os.path.join(scripts.basedir(), "annotator")):
-            os.symlink(cnet_annotator_dir, scripts.basedir())
-        return True
-    return False
-
-
-def clear_sem_sam_cache():
-    sem_seg_cache.clear()
-    gc.collect()
-    torch_gc()
-    
-
-def sem_sam_garbage_collect():
-    if shared.cmd_opts.lowvram:
-        for _, model in sem_seg_cache:
-            model.unload_model()
-    gc.collect()
-    torch_gc()
-
-
-def blend_image_and_seg(image, seg, alpha=0.5):
-    image_blend = np.array(image) * (1 - alpha) + np.array(seg) * alpha
-    return Image.fromarray(image_blend.astype(np.uint8))
 
 
 def semantic_segmentation(input_image, annotator_name):
