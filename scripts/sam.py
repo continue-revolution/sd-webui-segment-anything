@@ -17,7 +17,7 @@ from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
 from segment_anything import SamPredictor, sam_model_registry
 from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
-from scripts.auto import clear_sem_sam_cache
+from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation
 
 
 refresh_symbol = '\U0001f504'       # 🔄
@@ -47,17 +47,6 @@ def show_masks(image_np, masks: np.ndarray, alpha=0.5):
     return image.astype(np.uint8)
 
 
-def load_sam_model(sam_checkpoint):
-    model_type = '_'.join(sam_checkpoint.split('_')[1:-1])
-    sam_checkpoint = os.path.join(sam_model_dir, sam_checkpoint)
-    torch.load = unsafe_torch_load
-    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-    sam.to(device=device)
-    sam.eval()
-    torch.load = load
-    return sam
-
-
 def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     print("Dilation Amount: ", dilation_amt)
     mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
@@ -70,6 +59,17 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     matted_image = np.array(input_image)
     matted_image[~binary_img] = np.array([0, 0, 0, 0])
     return [blended_image, mask_image, Image.fromarray(matted_image)]
+
+
+def load_sam_model(sam_checkpoint):
+    model_type = '_'.join(sam_checkpoint.split('_')[1:-1])
+    sam_checkpoint = os.path.join(sam_model_dir, sam_checkpoint)
+    torch.load = unsafe_torch_load
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam.to(device=device)
+    sam.eval()
+    torch.load = load
+    return sam
 
 
 def clear_sam_cache():
@@ -298,7 +298,22 @@ def dino_batch_process(
     
     garbage_collect(sam)
     return process_info + "Done"
-    
+
+
+def cnet_seg(
+    sam_model_name, cnet_seg_input_image, cnet_seg_processor, 
+    auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    auto_sam_output_mode = "coco_rle" if "seg" in cnet_seg_processor else "binary_mask"
+    sam = load_sam_model(sam_model_name)
+    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, auto_sam_output_mode)
+    return semantic_segmentation(cnet_seg_input_image, cnet_seg_processor)
+
 
 def priorize_sam_scripts(is_img2img):
     if is_img2img:
@@ -518,20 +533,19 @@ class Script(scripts.Script):
                                            auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
                                            auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
                                            auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area)
-                            
+
                     with gr.Tabs():
                         with gr.TabItem(label="ControlNet"):
                             gr.Markdown("You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
-                            with gr.Row():
-                                cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", type="index", label="Choose preprocessor for semantic segmentation: ")
-                                cnet_seg_processor_resolution = gr.Slider(label="Preprocessor resolution", value=512, minimum=64, maximum=2048, step=1)
+                            cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", type="index", label="Choose preprocessor for semantic segmentation: ")
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
-                            cnet_seg_output_gallery = gr.Gallery(label="Auto Segmentation Output").style(grid=3)
+                            cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
                             cnet_seg_submit = gr.Button(value="Generate segmentation image")
+                            cnet_seg_status = gr.Text(value="", label="Segmentation status")
                             cnet_seg_submit.click(
-                                fn=None,
-                                inputs=[sam_model_name, cnet_seg_input_image, cnet_seg_processor, cnet_seg_processor_resolution, *auto_sam_config],
-                                outputs=[cnet_seg_output_gallery])
+                                fn=cnet_seg,
+                                inputs=[sam_model_name, cnet_seg_input_image, cnet_seg_processor, *auto_sam_config],
+                                outputs=[cnet_seg_output_gallery, cnet_seg_status])
                             with gr.Row(visible=(self.max_cn_num() > 0)):
                                 cnet_seg_enable_copy = gr.Checkbox(value=False, label='Copy to ControlNet Segmentation')
                                 cnet_seg_idx = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Segmentation Index', type="index")
