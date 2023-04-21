@@ -17,7 +17,7 @@ from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
 from segment_anything import SamPredictor, sam_model_registry
 from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
-from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation
+from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal
 
 
 refresh_symbol = '\U0001f504'       # 🔄
@@ -312,13 +312,33 @@ def cnet_seg(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, auto_sam_output_mode)
-    return semantic_segmentation(cnet_seg_input_image, cnet_seg_processor)
+    outputs = semantic_segmentation(cnet_seg_input_image, cnet_seg_processor)
+    sem_sam_garbage_collect()
+    garbage_collect(sam)
+    return outputs
+
+
+def image_layout(
+    sam_model_name, layout_input_image_or_path, layout_output_path, 
+    auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    sam = load_sam_model(sam_model_name)
+    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "binary_mask")
+    outputs = image_layer_internal(layout_input_image_or_path, layout_output_path)
+    sem_sam_garbage_collect()
+    garbage_collect(sam)
+    return outputs
 
 
 def priorize_sam_scripts(is_img2img):
+    cnet_idx = None
+    sam_idx = None
     if is_img2img:
-        cnet_idx = None
-        sam_idx = None
         for idx, s in enumerate(scripts.scripts_img2img.alwayson_scripts):
             if s.title() == "Segment Anything":
                 sam_idx = idx
@@ -328,8 +348,6 @@ def priorize_sam_scripts(is_img2img):
             scripts.scripts_img2img.alwayson_scripts[cnet_idx], scripts.scripts_img2img.alwayson_scripts[
                 sam_idx] = scripts.scripts_img2img.alwayson_scripts[sam_idx], scripts.scripts_img2img.alwayson_scripts[cnet_idx]
     else:
-        cnet_idx = None
-        sam_idx = None
         for idx, s in enumerate(scripts.scripts_txt2img.alwayson_scripts):
             if s.title() == "Segment Anything":
                 sam_idx = idx
@@ -569,12 +587,12 @@ class Script(scripts.Script):
                                 inputs=[layout_mode],
                                 outputs=[layout_input_image, layout_submit_single, layout_input_path, layout_submit_batch])
                             layout_submit_single.click(
-                                fn=None, # TODO
-                                inputs=[layout_input_image, layout_output_path],
+                                fn=image_layout,
+                                inputs=[sam_model_name, layout_input_image, layout_output_path, *auto_sam_config],
                                 outputs=[layout_status])
                             layout_submit_batch.click(
-                                fn=None, # TODO
-                                inputs=[layout_input_path, layout_output_path],
+                                fn=image_layout,
+                                inputs=[sam_model_name, layout_input_path, layout_output_path, *auto_sam_config],
                                 outputs=[layout_status])
 
                         with gr.TabItem(label="Mask by Category"):

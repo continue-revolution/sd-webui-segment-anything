@@ -1,5 +1,6 @@
 import os
 import gc
+import glob
 from PIL import Image
 from collections import OrderedDict
 import numpy as np
@@ -78,6 +79,36 @@ def random_segmentation(img):
     from annotator.util import HWC3
     detected_map = HWC3(detected_map.astype(np.uint8))
     return [blend_image_and_seg(img, detected_map), Image.fromarray(detected_map)], "Random segmentation done. Left is blended image, right is ControlNet input."
+
+
+def image_layer_image(layout_input_image, layout_output_path):
+    img_np = np.array(layout_input_image)
+    annotations = global_sam(img_np)
+    annotations = sorted(annotations, key=lambda x: x['area'])
+    for idx, annotation in enumerate(annotations):
+        img_tmp = np.zeros((img_np.shape[0], img_np.shape[1], 3))
+        img_tmp[annotation['segmentation']] = img_np[annotation['segmentation']]
+        img_np[annotation['segmentation']] = np.array([0, 0, 0])
+        img_tmp = Image.fromarray(img_tmp.astype(np.uint8))
+        img_tmp.save(os.path.join(layout_output_path, f"{idx}.png"))
+    img_np = Image.fromarray(img_np.astype(np.uint8))
+    img_np.save(os.path.join(layout_output_path, "leftover.png"))
+
+
+def image_layer_internal(layout_input_image_or_path, layout_output_path):
+    if isinstance(layout_input_image_or_path, str):
+        all_files = glob.glob(os.path.join(layout_input_image_or_path, "*"))
+        for image_index, input_image_file in enumerate(all_files):
+            print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
+            try:
+                input_image = Image.open(input_image_file).convert("RGB")
+                output_directory = os.path.join(layout_output_path, os.path.splitext(os.path.basename(input_image_file))[0])
+                image_layer_image(input_image, output_directory)
+            except:
+                print(f"File {input_image_file} not image, skipped.")
+    else:
+        image_layer_image(layout_input_image_or_path, layout_output_path)
+    return "Done"
 
 
 def inject_inference_segmentor(model, img):
