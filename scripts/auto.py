@@ -123,6 +123,14 @@ def inject_sem_seg(self, sem_seg, area_threshold=None, alpha=0.8, is_text=True, 
     return original_oneformer_draw_sem_seg(self, strengthen_sem_seg(sem_seg), area_threshold, alpha, is_text, edge_color)
 
 
+def inject_oodss(self, sem_seg, area_threshold=None, alpha=0.8, is_text=True, edge_color=(1.0, 1.0, 1.0)):
+    return sem_seg
+
+
+def inject_show_result_pyplot(model, img, result, palette=None, fig_size=(15, 10), opacity=0.5, title='', block=True):
+    return result[0]
+
+
 def _uniformer(img):
     if "uniformer" not in sem_seg_cache:
         from annotator.uniformer import apply_uniformer
@@ -146,24 +154,68 @@ def semantic_segmentation(input_image, annotator_name):
     if "seg" in annotator_name:
         if not os.path.isdir(os.path.join(scripts.basedir(), "annotator")) and not create_symbolic_link():
             return [], "ControlNet extension not found."
+        global original_uniformer_inference_segmentor
+        global original_oneformer_draw_sem_seg
         input_image_np = np.array(input_image)
         if annotator_name == "seg_ufade20k":
             original_semseg = _uniformer(input_image_np)
             import annotator.uniformer as uniformer
+            original_uniformer_inference_segmentor = uniformer.inference_segmentor
             uniformer.inference_segmentor = inject_inference_segmentor
             sam_semseg = _uniformer(input_image_np)
+            uniformer.inference_segmentor = original_uniformer_inference_segmentor
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
             return output_gallery, "Uniformer semantic segmentation of ade20k done. Left is segmentation before SAM, right is segmentation after SAM."
         else:
             dataset = annotator_name.split('_')[-1][2:]
             original_semseg = _oneformer(input_image_np, dataset)
             from annotator.oneformer.oneformer.demo.visualizer import Visualizer
+            original_oneformer_draw_sem_seg = Visualizer.draw_sem_seg
             Visualizer.draw_sem_seg = inject_sem_seg
             sam_semseg = _oneformer(input_image_np, dataset)
+            Visualizer.draw_sem_seg = original_oneformer_draw_sem_seg
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
             return output_gallery, f"Oneformer semantic segmentation of {dataset} done. Left is segmentation before SAM, right is segmentation after SAM."
     else:
         return random_segmentation(input_image)
+
+
+def categorical_mask_image(crop_processor, crop_category_input, crop_input_image):
+    if crop_input_image is None:
+        return "No input image."
+    if not os.path.isdir(os.path.join(scripts.basedir(), "annotator")) and not create_symbolic_link():
+        return "ControlNet extension not found."
+    filter_classes = crop_category_input.split('+')
+    if len(filter_classes) == 0:
+        return "No class selected."
+    try:
+        filter_classes = [int(i) for i in filter_classes]
+    except:
+        return "Illegal class id. You may have input some string."
+    global original_uniformer_inference_segmentor
+    global original_oneformer_draw_sem_seg
+    input_image_np = np.array(crop_input_image)
+    if crop_processor == "seg_ufade20k":
+        import annotator.uniformer as uniformer
+        original_uniformer_inference_segmentor = uniformer.inference_segmentor
+        uniformer.inference_segmentor = inject_inference_segmentor
+        tmp_ouis = uniformer.show_result_pyplot
+        uniformer.show_result_pyplot = inject_show_result_pyplot
+        sam_semseg = _uniformer(input_image_np)
+        uniformer.inference_segmentor = original_uniformer_inference_segmentor
+        uniformer.show_result_pyplot = tmp_ouis
+    else:
+        dataset = crop_processor.split('_')[-1][2:]
+        from annotator.oneformer.oneformer.demo.visualizer import Visualizer
+        tmp_oodss = Visualizer.draw_sem_seg
+        Visualizer.draw_sem_seg = inject_sem_seg
+        original_oneformer_draw_sem_seg = inject_oodss
+        sam_semseg = _oneformer(input_image_np, dataset)
+        Visualizer.draw_sem_seg = tmp_oodss
+    mask = np.zeros(sam_semseg.shape, dtype=np.bool_)
+    for i in filter_classes:
+        mask[sam_semseg == i] = True
+    return mask
 
 
 def register_auto_sam(sam, 

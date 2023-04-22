@@ -17,7 +17,7 @@ from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
 from segment_anything import SamPredictor, sam_model_registry
 from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
-from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal
+from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal, categorical_mask_image
 
 
 refresh_symbol = '\U0001f504'       # 🔄
@@ -52,9 +52,7 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
     binary_img = np.array(mask_image.convert('1'))
     if dilation_amt:
-        # Convert the image to a binary numpy array
         mask_image, binary_img = dilate_mask(binary_img, dilation_amt)
-    
     blended_image = Image.fromarray(show_masks(np.array(input_image), binary_img.astype(np.bool_)[None, ...]))
     matted_image = np.array(input_image)
     matted_image[~binary_img] = np.array([0, 0, 0, 0])
@@ -106,17 +104,11 @@ def refresh_sam_models(*inputs):
 
 
 def dilate_mask(mask, dilation_amt):
-    # Create a dilation kernel
     x, y = np.meshgrid(np.arange(dilation_amt), np.arange(dilation_amt))
     center = dilation_amt // 2
     dilation_kernel = ((x - center)**2 + (y - center)**2 <= center**2).astype(np.uint8)
-
-    # Dilate the image
     dilated_binary_img = binary_dilation(mask, dilation_kernel)
-
-    # Convert the dilated binary numpy array back to a PIL image
     dilated_mask = Image.fromarray(dilated_binary_img.astype(np.uint8) * 255)
-
     return dilated_mask, dilated_binary_img
 
 
@@ -134,6 +126,23 @@ def init_sam_model(sam_model_name):
     else:
         Exception(
             f"{sam_model_name} not found, please download model to models/sam.")
+
+
+def create_mask_output(image_np, masks, boxes_filt, gui):
+    print("Creating output image")
+    mask_images = []
+    masks_gallery = []
+    matted_images = []
+    boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
+    for mask in masks:
+        masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
+        if gui:
+            blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
+            mask_images.append(Image.fromarray(blended_image))
+            image_np_copy = copy.deepcopy(image_np)
+            image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+            matted_images.append(Image.fromarray(image_np_copy))
+    return mask_images + masks_gallery + matted_images
 
 
 def sam_predict(sam_model_name, input_image, positive_points, negative_points,
@@ -159,13 +168,10 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
                 return [], f"GroundingDINO installment has failed. Check your terminal for more detail and {dino_install_issue_text}. "
             else:
                 sam_predict_result += f" However, GroundingDINO installment has failed. Your process automatically fall back to point prompt only. Check your terminal for more detail and {dino_install_issue_text}. "
-
     sam = init_sam_model(sam_model_name)
-
     print(f"Running SAM Inference {image_np_rgb.shape}")
     predictor = SamPredictor(sam)
     predictor.set_image(image_np_rgb)
-
     if dino_enabled and boxes_filt.shape[0] > 1:
         sam_predict_status = f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts disgarded"
         print(sam_predict_status)
@@ -174,8 +180,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             point_coords=None,
             point_labels=None,
             boxes=transformed_boxes.to(device),
-            multimask_output=True,
-        )
+            multimask_output=True)
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
     else:
         num_box = 0 if boxes_filt is None else boxes_filt.shape[0]
@@ -194,26 +199,10 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             point_coords=point_coords if len(point_coords) > 0 else None,
             point_labels=point_labels if len(point_coords) > 0 else None,
             box=box,
-            multimask_output=True,
-        )
+            multimask_output=True)
         masks = masks[:, None, ...]
-
     garbage_collect(sam)
-    print("Creating output image")
-    mask_images = []
-    masks_gallery = []
-    matted_images = []
-    boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
-    for mask in masks:
-        masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
-        if gui:
-            blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
-            mask_images.append(Image.fromarray(blended_image))
-            image_np_copy = copy.deepcopy(image_np)
-            image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
-            matted_images.append(Image.fromarray(image_np_copy))
-
-    return mask_images + masks_gallery + matted_images, sam_predict_status + sam_predict_result
+    return create_mask_output(image_np, masks, boxes_filt, gui), sam_predict_status + sam_predict_result
 
 
 def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
@@ -268,8 +257,7 @@ def dino_batch_process(
             point_coords=None,
             point_labels=None,
             boxes=transformed_boxes.to(device),
-            multimask_output=(dino_batch_output_per_image == 1),
-        )
+            multimask_output=(dino_batch_output_per_image == 1))
         
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
         boxes_filt = boxes_filt.cpu().numpy().astype(int)
@@ -330,6 +318,44 @@ def image_layout(
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "binary_mask")
     outputs = image_layer_internal(layout_input_image_or_path, layout_output_path)
+    sem_sam_garbage_collect()
+    garbage_collect(sam)
+    return outputs
+
+
+def categorical_mask(
+    sam_model_name, crop_processor, crop_category_input, crop_input_image, 
+    auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    sam = load_sam_model(sam_model_name)
+    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "coco_rle")
+    outputs = categorical_mask_image(crop_processor, crop_category_input, crop_input_image)
+    sem_sam_garbage_collect()
+    garbage_collect(sam)
+    if isinstance(outputs, str):
+        return [], outputs
+    output_gallery = create_mask_output(np.array(crop_input_image), outputs[None, ...], None, False)
+    return output_gallery, "Done" if len(output_gallery) != 0 else "No masks found"
+
+
+def categorical_mask_batch(
+    sam_model_name, crop_processor, crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, 
+    crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, 
+    auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    sam = load_sam_model(sam_model_name)
+    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
+    auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
+    auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "coco_rle")
+    outputs = categorical_mask_image(crop_processor, crop_category_input, crop_input_image)
     sem_sam_garbage_collect()
     garbage_collect(sam)
     return outputs
@@ -555,7 +581,7 @@ class Script(scripts.Script):
                     with gr.Tabs():
                         with gr.TabItem(label="ControlNet"):
                             gr.Markdown("You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
-                            cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", type="index", label="Choose preprocessor for semantic segmentation: ")
+                            cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
                             cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
                             cnet_seg_submit = gr.Button(value="Generate segmentation image")
@@ -597,7 +623,7 @@ class Script(scripts.Script):
 
                         with gr.TabItem(label="Mask by Category"):
                             gr.Markdown("You can mask images by their categories via semantic segmentation. Please enter category ids (integers), separated by `+`. Visit [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/oneformer/data/datasets/register_ade20k_panoptic.py#L12-L207) for ade20k and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map.")
-                            crop_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", type="index", label="Choose preprocessor for semantic segmentation: ")
+                            crop_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco"], value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
                             crop_category_input = gr.Textbox(placeholder="Enter categody ids, separated by +. For example, if you want bed+person, your input should be 7+12 for ade20k and 65+1 for coco.", label="Enter category IDs")
                             with gr.Tabs():
                                 with gr.TabItem(label="Single Image"):
@@ -607,8 +633,8 @@ class Script(scripts.Script):
                                     crop_submit = gr.Button(value="Generate mask")
                                     crop_result = gr.Text(value="", label="Categorical mask status")
                                     crop_submit.click(
-                                        fn=None, # TODO
-                                        inputs=[sam_model_name, crop_input_image, crop_processor, crop_category_input, *auto_sam_config],
+                                        fn=categorical_mask,
+                                        inputs=[sam_model_name, crop_processor, crop_category_input, crop_input_image, *auto_sam_config],
                                         outputs=[crop_output_gallery, crop_result])
                                     crop_img2img_inpaint_enable, crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
                                     crop_dilation_checkbox, crop_dilation_output_gallery = ui_dilation(crop_output_gallery, crop_padding, crop_input_image)
@@ -623,8 +649,8 @@ class Script(scripts.Script):
                                 with gr.TabItem(label="Batch Process"):
                                     crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, _, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, crop_batch_run_button, crop_batch_progress = ui_batch(False)
                                     crop_batch_run_button.click(
-                                        fn=None, # TODO
-                                        inputs=[sam_model_name, crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background],
+                                        fn=categorical_mask_batch,
+                                        inputs=[sam_model_name, crop_processor, crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, *auto_sam_config],
                                         outputs=[crop_batch_progress])
 
                 with gr.TabItem(label="Upload Mask to ControlNet Inpainting"):
