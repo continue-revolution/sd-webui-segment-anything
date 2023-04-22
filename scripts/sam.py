@@ -103,15 +103,6 @@ def refresh_sam_models(*inputs):
     return gr.Dropdown.update(choices=sam_model_list, value=selected)
 
 
-def dilate_mask(mask, dilation_amt):
-    x, y = np.meshgrid(np.arange(dilation_amt), np.arange(dilation_amt))
-    center = dilation_amt // 2
-    dilation_kernel = ((x - center)**2 + (y - center)**2 <= center**2).astype(np.uint8)
-    dilated_binary_img = binary_dilation(mask, dilation_kernel)
-    dilated_mask = Image.fromarray(dilated_binary_img.astype(np.uint8) * 255)
-    return dilated_mask, dilated_binary_img
-
-
 def init_sam_model(sam_model_name):
     print("Initializing SAM")
     if sam_model_name in sam_model_cache:
@@ -126,6 +117,15 @@ def init_sam_model(sam_model_name):
     else:
         Exception(
             f"{sam_model_name} not found, please download model to models/sam.")
+
+
+def dilate_mask(mask, dilation_amt):
+    x, y = np.meshgrid(np.arange(dilation_amt), np.arange(dilation_amt))
+    center = dilation_amt // 2
+    dilation_kernel = ((x - center)**2 + (y - center)**2 <= center**2).astype(np.uint8)
+    dilated_binary_img = binary_dilation(mask, dilation_kernel)
+    dilated_mask = Image.fromarray(dilated_binary_img.astype(np.uint8) * 255)
+    return dilated_mask, dilated_binary_img
 
 
 def create_mask_output(image_np, masks, boxes_filt, gui):
