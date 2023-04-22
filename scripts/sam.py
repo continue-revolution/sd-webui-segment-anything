@@ -373,7 +373,7 @@ def categorical_mask_batch(
     for image_index, input_image_file in enumerate(all_files):
         print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
         try:
-            crop_input_image = Image.open(input_image_file).convert("RGBB")
+            crop_input_image = Image.open(input_image_file).convert("RGB")
             outputs = categorical_mask_image(crop_processor, crop_category_input, crop_input_image)
             if isinstance(outputs, str):
                 outputs = f"Image {image_index}: {outputs}"
@@ -415,17 +415,15 @@ def priorize_sam_scripts(is_img2img):
 
 def ui_sketch_inner():
     sam_inpaint_color_sketch = gr.Image(label="Color sketch inpainting", source="upload", interactive=True, type="pil", tool="color-sketch", image_mode="RGBA")
-    with FormRow():
-        sam_inpaint_mask_blur = gr.Slider(label='Mask blur', minimum=0, maximum=64, step=1, value=4)
-        sam_inpaint_mask_alpha = gr.Slider(label="Mask transparency")
-    return sam_inpaint_color_sketch, sam_inpaint_mask_blur, sam_inpaint_mask_alpha    
+    sam_inpaint_mask_alpha = gr.Slider(label="Mask transparency")
+    return sam_inpaint_color_sketch, sam_inpaint_mask_alpha    
 
 
 def ui_sketch(sam_input_image):
     sam_sketch_checkbox = gr.Checkbox(value=False, label="Enable Sketch")
     with gr.Column(visible=False) as sketch_column:
         sam_inpaint_copy_button = gr.Button(value="Copy from input image")
-        sam_inpaint_color_sketch, sam_inpaint_mask_blur, sam_inpaint_mask_alpha = ui_sketch_inner()
+        sam_inpaint_color_sketch, sam_inpaint_mask_alpha = ui_sketch_inner()
     sam_inpaint_copy_button.click(
             fn=lambda x: x,
             inputs=[sam_input_image],
@@ -435,7 +433,7 @@ def ui_sketch(sam_input_image):
         inputs=[sam_sketch_checkbox],
         outputs=[sketch_column],
         show_progress=False)
-    return sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_blur, sam_inpaint_mask_alpha
+    return sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_alpha
 
 def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image):
     sam_dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")

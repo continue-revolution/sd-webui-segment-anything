@@ -1,5 +1,6 @@
 from typing import Tuple, List, Dict
-from PIL import Image
+from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+import numpy as np
 from modules import shared
 
 
@@ -23,7 +24,6 @@ class SAMInpaintUnit:
         self.dilation_output_gallery: List[Dict] = None
         self.sketch_checkbox: bool = False
         self.inpaint_color_sketch = None
-        self.inpaint_mask_blur: int = 4
         self.inpaint_mask_alpha: int = 0
         self.init_sam_single_image_process(args)
 
@@ -40,19 +40,24 @@ class SAMInpaintUnit:
         self.sketch_checkbox            = args[8]
         if self.is_img2img:
             self.inpaint_color_sketch   = args[9]
-            self.inpaint_mask_blur      = args[10]
             self.inpaint_mask_alpha     = args[11]
 
 
-    def get_input_and_mask(self):
+    def get_input_and_mask(self, mask_blur):
         image, mask = None, None
         if self.inpaint_upload_enable and self.input_image is not None and self.output_mask_gallery is not None:
             if self.dilation_checkbox and self.dilation_output_gallery is not None:
-                mask = Image.open(self.dilation_output_gallery[1]['name'])
+                mask = Image.open(self.dilation_output_gallery[1]['name']).convert('L')
             elif self.output_mask_gallery is not None:
-                mask = self.output_mask_gallery[self.output_chosen_mask + 3]['name']
-            if self.is_img2img and self.sketch_checkbox and self.inpaint_color_sketch is not None:
-                pass # TODO
+                mask = Image.open(self.output_mask_gallery[self.output_chosen_mask + 3]['name']).convert('L')
+            if mask is not None and self.cnet_inpaint_invert:
+                mask = ImageOps.invert(mask)
+            if self.is_img2img and self.sketch_checkbox and self.inpaint_color_sketch is not None and mask is not None:
+                alpha = np.expand_dims(np.array(mask) / 255, axis=-1)
+                image = np.uint8(np.array(self.inpaint_color_sketch) * alpha + np.array(self.input_image) * (1 - alpha))
+                mask = ImageEnhance.Brightness(mask).enhance(1 - self.inpaint_mask_alpha / 100)
+                blur = ImageFilter.GaussianBlur(mask_blur)
+                image = Image.composite(image.filter(blur), self.input_image, mask.filter(blur)).convert("RGB")
             else:
                 image = self.input_image
         return image, mask
@@ -64,8 +69,8 @@ class SAMProcessUnit:
         self.is_img2img = is_img2img
 
         if is_img2img:
-            sam_inpaint_args = args[:12]
-            args = args[12:]
+            sam_inpaint_args = args[:11]
+            args = args[11:]
         else:
             sam_inpaint_args = args[:8]
             args = args[8:]
@@ -88,10 +93,11 @@ class SAMProcessUnit:
 
     
     def set_process_attributes(self, p):
-        inpaint_image, inpaint_mask = self.sam_inpaint_unit.get_input_and_mask()
+        inpaint_mask_blur = getattr(p, "mask_blur", 0)
+        inpaint_image, inpaint_mask = self.sam_inpaint_unit.get_input_and_mask(inpaint_mask_blur)
         inpaint_cn_num = self.sam_inpaint_unit.cnet_inpaint_idx
         if inpaint_image is None:
-            inpaint_image, inpaint_mask = self.crop_inpaint_unit.get_input_and_mask()
+            inpaint_image, inpaint_mask = self.crop_inpaint_unit.get_input_and_mask(inpaint_mask_blur)
             inpaint_cn_num = self.crop_inpaint_unit.cnet_inpaint_idx
         if inpaint_image is not None and inpaint_mask is not None:
             if self.is_img2img:
@@ -112,6 +118,6 @@ class SAMProcessUnit:
             value[idx] = v
         else:
             # if value is None, ControlNet uses default value
-            value = [value] * self.max_cn_num()
+            value = [value] * max_cn_num()
             value[idx] = v
         setattr(p, attr, value)
