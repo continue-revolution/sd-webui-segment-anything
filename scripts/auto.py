@@ -63,6 +63,7 @@ def strengthen_sem_seg(class_ids, img):
 
 
 def random_segmentation(img):
+    print("Generating random segmentation for Edit-Anything")
     img_np = np.array(img)
     annotations = global_sam(img_np)
     annotations = sorted(annotations, key=lambda x: x['area'], reverse=True)
@@ -84,6 +85,7 @@ def random_segmentation(img):
 def image_layer_image(layout_input_image, layout_output_path):
     img_np = np.array(layout_input_image)
     annotations = global_sam(img_np)
+    print(f"AutoSAM generated {len(annotations)} annotations")
     annotations = sorted(annotations, key=lambda x: x['area'])
     for idx, annotation in enumerate(annotations):
         img_tmp = np.zeros((img_np.shape[0], img_np.shape[1], 3))
@@ -97,6 +99,7 @@ def image_layer_image(layout_input_image, layout_output_path):
 
 def image_layer_internal(layout_input_image_or_path, layout_output_path):
     if isinstance(layout_input_image_or_path, str):
+        print("Batch processing")
         all_files = glob.glob(os.path.join(layout_input_image_or_path, "*"))
         for image_index, input_image_file in enumerate(all_files):
             print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
@@ -157,11 +160,13 @@ def semantic_segmentation(input_image, annotator_name):
         global original_uniformer_inference_segmentor
         global original_oneformer_draw_sem_seg
         input_image_np = np.array(input_image)
+        print("Generating semantic segmentation without SAM")
         if annotator_name == "seg_ufade20k":
             original_semseg = _uniformer(input_image_np)
             import annotator.uniformer as uniformer
             original_uniformer_inference_segmentor = uniformer.inference_segmentor
             uniformer.inference_segmentor = inject_inference_segmentor
+            print("Generating semantic segmentation with SAM")
             sam_semseg = _uniformer(input_image_np)
             uniformer.inference_segmentor = original_uniformer_inference_segmentor
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
@@ -172,6 +177,7 @@ def semantic_segmentation(input_image, annotator_name):
             from annotator.oneformer.oneformer.demo.visualizer import Visualizer
             original_oneformer_draw_sem_seg = Visualizer.draw_sem_seg
             Visualizer.draw_sem_seg = inject_sem_seg
+            print("Generating semantic segmentation with SAM")
             sam_semseg = _oneformer(input_image_np, dataset)
             Visualizer.draw_sem_seg = original_oneformer_draw_sem_seg
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
@@ -195,6 +201,7 @@ def categorical_mask_image(crop_processor, crop_category_input, crop_input_image
     global original_uniformer_inference_segmentor
     global original_oneformer_draw_sem_seg
     input_image_np = np.array(crop_input_image)
+    print(f"Generating categories with processor {crop_processor}")
     if crop_processor == "seg_ufade20k":
         import annotator.uniformer as uniformer
         original_uniformer_inference_segmentor = uniformer.inference_segmentor

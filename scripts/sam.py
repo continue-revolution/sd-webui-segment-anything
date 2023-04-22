@@ -149,6 +149,7 @@ def create_mask_batch_output(
     input_image_file, dino_batch_dest_dir, 
     image_np, masks, boxes_filt, batch_dilation_amt, 
     dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask):
+    print("Creating batch output image")
     filename, ext = os.path.splitext(os.path.basename(input_image_file))
     ext = ".png" # JPEG not compatible with RGBA
     for idx, mask in enumerate(masks):
@@ -303,6 +304,7 @@ def cnet_seg(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    print(f"Start semantic segmentation with processor {cnet_seg_processor}")
     auto_sam_output_mode = "coco_rle" if "seg" in cnet_seg_processor else "binary_mask"
     sam = load_sam_model(sam_model_name)
     register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
@@ -321,6 +323,7 @@ def image_layout(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    print("Start processing image layout")
     sam = load_sam_model(sam_model_name)
     register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
@@ -338,6 +341,7 @@ def categorical_mask(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    print("Start processing categorical mask")
     sam = load_sam_model(sam_model_name)
     register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
@@ -359,6 +363,7 @@ def categorical_mask_batch(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
+    print("Start processing categorical mask in batch")
     sam = load_sam_model(sam_model_name)
     register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
