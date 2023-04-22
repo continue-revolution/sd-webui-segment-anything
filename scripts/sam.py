@@ -145,6 +145,32 @@ def create_mask_output(image_np, masks, boxes_filt, gui):
     return mask_images + masks_gallery + matted_images
 
 
+def create_mask_batch_output(
+    input_image_file, dino_batch_dest_dir, 
+    image_np, masks, boxes_filt, batch_dilation_amt, 
+    dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask):
+    filename, ext = os.path.splitext(os.path.basename(input_image_file))
+    ext = ".png" # JPEG not compatible with RGBA
+    for idx, mask in enumerate(masks):
+        blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
+        merged_mask = np.any(mask, axis=0)
+        if dino_batch_save_background:
+            merged_mask = ~merged_mask
+        if batch_dilation_amt:
+            _, merged_mask = dilate_mask(merged_mask, batch_dilation_amt)
+        image_np_copy = copy.deepcopy(image_np)
+        image_np_copy[~merged_mask] = np.array([0, 0, 0, 0])
+        if dino_batch_save_image:
+            output_image = Image.fromarray(image_np_copy)
+            output_image.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_output{ext}"))
+        if dino_batch_save_mask:
+            output_mask = Image.fromarray(merged_mask)
+            output_mask.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_mask{ext}"))
+        if dino_batch_save_image_with_mask:
+            output_blend = Image.fromarray(blended_image)
+            output_blend.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_blend{ext}"))
+
+
 def sam_predict(sam_model_name, input_image, positive_points, negative_points,
                 dino_checkbox, dino_model_name, text_prompt, box_threshold,
                 dino_preview_checkbox, dino_preview_boxes_selection, gui=True):
@@ -262,27 +288,10 @@ def dino_batch_process(
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
         boxes_filt = boxes_filt.cpu().numpy().astype(int)
         
-        filename, ext = os.path.splitext(os.path.basename(input_image_file))
-        ext = ".png" # JPEG not compatible with RGBA
-
-        for idx, mask in enumerate(masks):
-            blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
-            merged_mask = np.any(mask, axis=0)
-            if dino_batch_save_background:
-                merged_mask = ~merged_mask
-            if batch_dilation_amt:
-                _, merged_mask = dilate_mask(merged_mask, batch_dilation_amt)
-            image_np_copy = copy.deepcopy(image_np)
-            image_np_copy[~merged_mask] = np.array([0, 0, 0, 0])
-            if dino_batch_save_image:
-                output_image = Image.fromarray(image_np_copy)
-                output_image.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_output{ext}"))
-            if dino_batch_save_mask:
-                output_mask = Image.fromarray(merged_mask)
-                output_mask.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_mask{ext}"))
-            if dino_batch_save_image_with_mask:
-                output_blend = Image.fromarray(blended_image)
-                output_blend.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_blend{ext}"))
+        create_mask_batch_output(
+            input_image_file, dino_batch_dest_dir, 
+            image_np, masks, boxes_filt, batch_dilation_amt, 
+            dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask)
     
     garbage_collect(sam)
     return process_info + "Done"
@@ -340,7 +349,7 @@ def categorical_mask(
     if isinstance(outputs, str):
         return [], outputs
     output_gallery = create_mask_output(np.array(crop_input_image), outputs[None, ...], None, False)
-    return output_gallery, "Done" if len(output_gallery) != 0 else "No masks found"
+    return output_gallery, "Done"
 
 
 def categorical_mask_batch(
@@ -355,7 +364,24 @@ def categorical_mask_batch(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "coco_rle")
-    outputs = categorical_mask_image(crop_processor, crop_category_input, crop_input_image)
+    all_files = glob.glob(os.path.join(crop_batch_source_dir, "*"))
+    process_info = ""
+    for image_index, input_image_file in enumerate(all_files):
+        print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
+        try:
+            crop_input_image = Image.open(input_image_file).convert("RGBB")
+            outputs = categorical_mask_image(crop_processor, crop_category_input, crop_input_image)
+            if isinstance(outputs, str):
+                outputs = f"Image {image_index}: {outputs}"
+                print(outputs)
+                process_info += outputs + "\n"
+                continue
+            create_mask_batch_output(
+                input_image_file, crop_batch_dest_dir, 
+                np.array(crop_input_image), outputs[None, ...], None, crop_batch_dilation_amt, 
+                crop_batch_save_image, crop_batch_save_mask, crop_batch_save_background, crop_batch_save_image_with_mask)
+        except:
+            print(f"File {input_image_file} not image, skipped.")
     sem_sam_garbage_collect()
     garbage_collect(sam)
     return outputs
@@ -532,12 +558,12 @@ class Script(scripts.Script):
                         gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")
                     img2img_inpaint_upload_enable_copy, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
                     sam_dilation_checkbox, sam_dilation_output_gallery = ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image)
-                    sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_color_sketch_orig, sam_inpaint_mask_blur, sam_inpaint_mask_alpha = ui_sketch(sam_input_image)
                     sam_single_image_process = (
                         img2img_inpaint_upload_enable_copy, sam_input_image, sam_output_mask_gallery, sam_output_chosen_mask, 
                         sam_dilation_checkbox, sam_dilation_output_gallery, 
-                        cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx, 
-                        sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_color_sketch_orig, sam_inpaint_mask_blur, sam_inpaint_mask_alpha)
+                        cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx)
+                    if is_img2img:
+                        sam_single_image_process += ui_sketch(sam_input_image)
                     ui_process += sam_single_image_process
 
                 with gr.TabItem(label="Batch Process"):
@@ -638,12 +664,12 @@ class Script(scripts.Script):
                                         outputs=[crop_output_gallery, crop_result])
                                     crop_img2img_inpaint_enable, crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
                                     crop_dilation_checkbox, crop_dilation_output_gallery = ui_dilation(crop_output_gallery, crop_padding, crop_input_image)
-                                    crop_sketch_checkbox, crop_inpaint_color_sketch, crop_inpaint_color_sketch_orig, crop_inpaint_mask_blur, crop_inpaint_mask_alpha = ui_sketch(sam_input_image)
                                     crop_single_image_process = (
                                         crop_img2img_inpaint_enable, crop_input_image, crop_output_gallery, 
                                         crop_dilation_checkbox, crop_dilation_output_gallery, 
-                                        crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx,
-                                        crop_sketch_checkbox, crop_inpaint_color_sketch, crop_inpaint_color_sketch_orig, crop_inpaint_mask_blur, crop_inpaint_mask_alpha)
+                                        crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx)
+                                    if is_img2img:
+                                        crop_single_image_process += ui_sketch(sam_input_image)
                                     ui_process += crop_single_image_process
 
                                 with gr.TabItem(label="Batch Process"):
