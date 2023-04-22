@@ -37,10 +37,10 @@ class SAMInpaintUnit:
         self.output_chosen_mask         = args[5]
         self.dilation_checkbox          = args[6]
         self.dilation_output_gallery    = args[7]
-        self.sketch_checkbox            = args[8]
         if self.is_img2img:
+            self.sketch_checkbox        = args[8]
             self.inpaint_color_sketch   = args[9]
-            self.inpaint_mask_alpha     = args[11]
+            self.inpaint_mask_alpha     = args[10]
 
 
     def get_input_and_mask(self, mask_blur):

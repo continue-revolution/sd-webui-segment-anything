@@ -13,6 +13,7 @@ from modules.devices import torch_gc
 
 global_sam = None
 sem_seg_cache = OrderedDict()
+sam_annotator_dir = os.path.join(scripts.basedir(), "annotator")
 original_uniformer_inference_segmentor = None
 original_oneformer_draw_sem_seg = None
 
@@ -25,8 +26,8 @@ def blend_image_and_seg(image, seg, alpha=0.5):
 def create_symbolic_link():
     cnet_annotator_dir = os.path.join(extensions_dir, "sd-webui-controlnet/annotator")
     if os.path.isdir(cnet_annotator_dir):
-        if not os.path.isdir(os.path.join(scripts.basedir(), "annotator")):
-            os.symlink(cnet_annotator_dir, scripts.basedir())
+        if not os.path.isdir(sam_annotator_dir):
+            os.symlink(cnet_annotator_dir, sam_annotator_dir, target_is_directory=True)
         return True
     return False
 
@@ -163,10 +164,10 @@ def semantic_segmentation(input_image, annotator_name):
         print("Generating semantic segmentation without SAM")
         if annotator_name == "seg_ufade20k":
             original_semseg = _uniformer(input_image_np)
+            print("Generating semantic segmentation with SAM")
             import annotator.uniformer as uniformer
             original_uniformer_inference_segmentor = uniformer.inference_segmentor
             uniformer.inference_segmentor = inject_inference_segmentor
-            print("Generating semantic segmentation with SAM")
             sam_semseg = _uniformer(input_image_np)
             uniformer.inference_segmentor = original_uniformer_inference_segmentor
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
@@ -174,10 +175,10 @@ def semantic_segmentation(input_image, annotator_name):
         else:
             dataset = annotator_name.split('_')[-1][2:]
             original_semseg = _oneformer(input_image_np, dataset)
+            print("Generating semantic segmentation with SAM")
             from annotator.oneformer.oneformer.demo.visualizer import Visualizer
             original_oneformer_draw_sem_seg = Visualizer.draw_sem_seg
             Visualizer.draw_sem_seg = inject_sem_seg
-            print("Generating semantic segmentation with SAM")
             sam_semseg = _oneformer(input_image_np, dataset)
             Visualizer.draw_sem_seg = original_oneformer_draw_sem_seg
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
