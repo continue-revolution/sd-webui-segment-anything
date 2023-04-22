@@ -417,25 +417,17 @@ def priorize_sam_scripts(is_img2img):
 
 def ui_sketch_inner():
     sam_inpaint_color_sketch = gr.Image(label="Color sketch inpainting", source="upload", interactive=True, type="pil", tool="color-sketch", image_mode="RGBA")
-    sam_inpaint_color_sketch_orig = gr.State(None)
     with FormRow():
         sam_inpaint_mask_blur = gr.Slider(label='Mask blur', minimum=0, maximum=64, step=1, value=4)
         sam_inpaint_mask_alpha = gr.Slider(label="Mask transparency")
-    def update_orig(image, state):
-        if image is not None:
-            same_size = state is not None and state.size == image.size
-            has_exact_match = np.any(np.all(np.array(image) == np.array(state), axis=-1))
-            edited = same_size and has_exact_match
-            return image if not edited or state is None else state
-    sam_inpaint_color_sketch.change(update_orig, [sam_inpaint_color_sketch, sam_inpaint_color_sketch_orig], sam_inpaint_color_sketch_orig)
-    return sam_inpaint_color_sketch, sam_inpaint_color_sketch_orig, sam_inpaint_mask_blur, sam_inpaint_mask_alpha    
+    return sam_inpaint_color_sketch, sam_inpaint_mask_blur, sam_inpaint_mask_alpha    
 
 
 def ui_sketch(sam_input_image):
     sam_sketch_checkbox = gr.Checkbox(value=False, label="Enable Sketch")
     with gr.Column(visible=False) as sketch_column:
         sam_inpaint_copy_button = gr.Button(value="Copy from input image")
-        sam_inpaint_color_sketch, sam_inpaint_color_sketch_orig, sam_inpaint_mask_blur, sam_inpaint_mask_alpha = ui_sketch_inner()
+        sam_inpaint_color_sketch, sam_inpaint_mask_blur, sam_inpaint_mask_alpha = ui_sketch_inner()
     sam_inpaint_copy_button.click(
             fn=lambda x: x,
             inputs=[sam_input_image],
@@ -445,7 +437,7 @@ def ui_sketch(sam_input_image):
         inputs=[sam_sketch_checkbox],
         outputs=[sketch_column],
         show_progress=False)
-    return sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_color_sketch_orig, sam_inpaint_mask_blur, sam_inpaint_mask_alpha
+    return sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_blur, sam_inpaint_mask_alpha
 
 def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image):
     sam_dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")
@@ -467,12 +459,14 @@ def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image
 
 def ui_inpaint(is_img2img, max_cn):
     with FormRow():
-        img2img_inpaint_upload_enable_copy_label = "Copy to Inpaint Upload" if is_img2img else "Please go to img2img to copy to inpaint upload."
-        img2img_inpaint_upload_enable_copy = gr.Checkbox(value=False, label=img2img_inpaint_upload_enable_copy_label, interactive=is_img2img)
-        cnet_inpaint_copy_enable = gr.Checkbox(value=False, label='Copy to ControlNet Inpaint', visible=(max_cn > 0))
-        cnet_inpaint_invert = gr.Checkbox(value=False, label='ControlNet inpaint not masked', visible=(max_cn > 0))
-        cnet_inpaint_idx = gr.Radio(value="0" if max_cn > 0 else None, choices=[str(i) for i in range(max_cn)], label='ControlNet Inpaint Index', type="index", visible=(max_cn > 0))
-    return img2img_inpaint_upload_enable_copy, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx
+        if is_img2img:
+            inpaint_upload_enable_label = "Copy to Inpaint Upload" + (" & ControlNet Inpainting" if max_cn > 0 else "")
+        else:
+            inpaint_upload_enable_label = "Copy to ControlNet Inpainting" if max_cn > 0 else ""
+        inpaint_upload_enable = gr.Checkbox(value=False, label=inpaint_upload_enable_label, visible=(len(inpaint_upload_enable_label) > 0))
+        cnet_inpaint_invert = gr.Checkbox(value=False, label='ControlNet inpaint not masked', visible=((max_cn > 0) and not is_img2img))
+        cnet_inpaint_idx = gr.Radio(value="0" if max_cn > 0 else None, choices=[str(i) for i in range(max_cn)], label='ControlNet Inpaint Index', type="index", visible=((max_cn > 0) and not is_img2img))
+    return inpaint_upload_enable, cnet_inpaint_invert, cnet_inpaint_idx
 
 
 def ui_batch(is_dino):
@@ -561,12 +555,12 @@ class Script(scripts.Script):
                     with FormRow():
                         sam_output_chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
                         gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")
-                    img2img_inpaint_upload_enable_copy, cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
+                    inpaint_upload_enable, cnet_inpaint_invert, cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
                     sam_dilation_checkbox, sam_dilation_output_gallery = ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image)
                     sam_single_image_process = (
-                        img2img_inpaint_upload_enable_copy, sam_input_image, sam_output_mask_gallery, sam_output_chosen_mask, 
-                        sam_dilation_checkbox, sam_dilation_output_gallery, 
-                        cnet_inpaint_copy_enable, cnet_inpaint_invert, cnet_inpaint_idx)
+                        inpaint_upload_enable, cnet_inpaint_invert, cnet_inpaint_idx,
+                        sam_input_image, sam_output_mask_gallery, sam_output_chosen_mask, 
+                        sam_dilation_checkbox, sam_dilation_output_gallery)
                     if is_img2img:
                         sam_single_image_process += ui_sketch(sam_input_image)
                     ui_process += sam_single_image_process
@@ -667,12 +661,12 @@ class Script(scripts.Script):
                                         fn=categorical_mask,
                                         inputs=[sam_model_name, crop_processor, crop_category_input, crop_input_image, *auto_sam_config],
                                         outputs=[crop_output_gallery, crop_result])
-                                    crop_img2img_inpaint_enable, crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
+                                    crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
                                     crop_dilation_checkbox, crop_dilation_output_gallery = ui_dilation(crop_output_gallery, crop_padding, crop_input_image)
                                     crop_single_image_process = (
-                                        crop_img2img_inpaint_enable, crop_input_image, crop_output_gallery, 
-                                        crop_dilation_checkbox, crop_dilation_output_gallery, 
-                                        crop_cnet_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx)
+                                        crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx, 
+                                        crop_input_image, crop_output_gallery, 
+                                        crop_dilation_checkbox, crop_dilation_output_gallery)
                                     if is_img2img:
                                         crop_single_image_process += ui_sketch(sam_input_image)
                                     ui_process += crop_single_image_process
@@ -683,37 +677,6 @@ class Script(scripts.Script):
                                         fn=categorical_mask_batch,
                                         inputs=[sam_model_name, crop_processor, crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, *auto_sam_config],
                                         outputs=[crop_batch_progress])
-
-                with gr.TabItem(label="Upload Mask to ControlNet Inpainting"):
-                    gr.Markdown("This panel is for those who want to upload mask to ControlNet inpainting, or draw mask once for both img2img and ControlNet inpainting. It is not part of SAM's functionality. By checking the box below, you agree that you will disable all functionalities of SAM.")
-                    gr.Markdown("This panel will exist until ControlNet Inpainting support uploading human-painted masks. It is not something related to SAM, but it is beneficial to Stable Diffusion community.")
-                    with FormRow():
-                        cnet_upload_enable = gr.Checkbox(value=False, label="Disable SAM functionality and upload manually created mask to ControlNet inpaint.")
-                        cnet_upload_invert = gr.Checkbox(value=False, label="ControlNet inpaint not masked")
-                        cnet_upload_num = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Inpaint Number', type="index")
-                        cnet_upload_to_img2img_enable = gr.Checkbox(value=False, visible=is_img2img, label="Also upload to img2img inpainting upload.")
-                    with gr.Column(visible=False) as cnet_upload_panel:
-                        if is_img2img:
-                            cnet_upload_choice = gr.Radio(choices=["Upload", "Draw"], value="Upload", type="index")
-                        with gr.Row() as cnet_upload_row:
-                            cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", source="upload", interactive=True, type="pil")
-                            cnet_upload_mask_inpaint = gr.Image(label="Mask for ControlNet Inpaint", source="upload", interactive=True, type="pil")
-                        if is_img2img:
-                            with gr.Column(visible=False) as cnet_draw_panel:
-                                cnet_upload_inpaint_color_sketch, cnet_upload_inpaint_color_sketch_orig, cnet_upload_inpaint_mask_blur, cnet_upload_inpaint_mask_alpha = ui_sketch_inner()
-                            cnet_upload_choice.change(
-                                fn=lambda x: (gr_show(x == 0), gr_show(x == 1)),
-                                inputs=[cnet_upload_choice],
-                                outputs=[cnet_upload_row, cnet_draw_panel])
-                    cnet_upload_enable.change(
-                        fn=gr_show,
-                        inputs=[cnet_upload_enable],
-                        outputs=[cnet_upload_panel],
-                        show_progress=False)
-                    cnet_upload_process = (cnet_upload_enable, cnet_upload_invert, cnet_upload_num, cnet_upload_to_img2img_enable, cnet_upload_img_inpaint, cnet_upload_mask_inpaint)
-                    if is_img2img:
-                        cnet_upload_process += (cnet_upload_choice, cnet_upload_inpaint_color_sketch, cnet_upload_inpaint_color_sketch_orig, cnet_upload_inpaint_mask_blur, cnet_upload_inpaint_mask_alpha)
-                    ui_process += cnet_upload_process
 
                 with gr.Row():
                     switch = gr.Button(value="Switch to Inpaint Upload")
