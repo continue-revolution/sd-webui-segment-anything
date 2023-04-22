@@ -18,6 +18,7 @@ from modules.paths import models_path
 from segment_anything import SamPredictor, sam_model_registry
 from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
 from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal, categorical_mask_image
+from scripts.process_params import SAMProcessUnit, max_cn_num
 
 
 refresh_symbol = '\U0001f504'       # 🔄
@@ -130,9 +131,7 @@ def dilate_mask(mask, dilation_amt):
 
 def create_mask_output(image_np, masks, boxes_filt, gui):
     print("Creating output image")
-    mask_images = []
-    masks_gallery = []
-    matted_images = []
+    mask_images, masks_gallery, matted_images = [], [], []
     boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
     for mask in masks:
         masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
@@ -393,8 +392,7 @@ def categorical_mask_batch(
 
 
 def priorize_sam_scripts(is_img2img):
-    cnet_idx = None
-    sam_idx = None
+    cnet_idx, sam_idx = None, None
     if is_img2img:
         for idx, s in enumerate(scripts.scripts_img2img.alwayson_scripts):
             if s.title() == "Segment Anything":
@@ -493,7 +491,7 @@ class Script(scripts.Script):
         return scripts.AlwaysVisible
 
     def ui(self, is_img2img):
-        if self.max_cn_num() > 0:
+        if max_cn_num() > 0:
             priorize_sam_scripts(is_img2img)
         tab_prefix = ("img2img" if is_img2img else "txt2img") + "_sam_"
         ui_process = ()
@@ -555,10 +553,10 @@ class Script(scripts.Script):
                     with FormRow():
                         sam_output_chosen_mask = gr.Radio(label="Choose your favorite mask: ", value="0", choices=["0", "1", "2"], type="index")
                         gr.Checkbox(value=False, label="Preview automatically when add/remove points", elem_id=f"{tab_prefix}realtime_preview_checkbox")
-                    inpaint_upload_enable, cnet_inpaint_invert, cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
+                    sam_inpaint_upload_enable, sam_cnet_inpaint_invert, sam_cnet_inpaint_idx = ui_inpaint(is_img2img, max_cn_num())
                     sam_dilation_checkbox, sam_dilation_output_gallery = ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image)
                     sam_single_image_process = (
-                        inpaint_upload_enable, cnet_inpaint_invert, cnet_inpaint_idx,
+                        sam_inpaint_upload_enable, sam_cnet_inpaint_invert, sam_cnet_inpaint_idx,
                         sam_input_image, sam_output_mask_gallery, sam_output_chosen_mask, 
                         sam_dilation_checkbox, sam_dilation_output_gallery)
                     if is_img2img:
@@ -605,7 +603,9 @@ class Script(scripts.Script):
 
                     with gr.Tabs():
                         with gr.TabItem(label="ControlNet"):
-                            gr.Markdown("You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
+                            gr.Markdown(
+                                "You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. "
+                                "Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
                             cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
                             cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
@@ -615,9 +615,9 @@ class Script(scripts.Script):
                                 fn=cnet_seg,
                                 inputs=[sam_model_name, cnet_seg_input_image, cnet_seg_processor, *auto_sam_config],
                                 outputs=[cnet_seg_output_gallery, cnet_seg_status])
-                            with gr.Row(visible=(self.max_cn_num() > 0)):
+                            with gr.Row(visible=(max_cn_num() > 0)):
                                 cnet_seg_enable_copy = gr.Checkbox(value=False, label='Copy to ControlNet Segmentation')
-                                cnet_seg_idx = gr.Radio(value="0" if self.max_cn_num() > 0 else None, choices=[str(i) for i in range(self.max_cn_num())], label='ControlNet Segmentation Index', type="index")
+                                cnet_seg_idx = gr.Radio(value="0" if max_cn_num() > 0 else None, choices=[str(i) for i in range(max_cn_num())], label='ControlNet Segmentation Index', type="index")
                             auto_sam_process = (cnet_seg_output_gallery, cnet_seg_enable_copy, cnet_seg_idx)
                             ui_process += auto_sam_process
 
@@ -647,7 +647,10 @@ class Script(scripts.Script):
                                 outputs=[layout_status])
 
                         with gr.TabItem(label="Mask by Category"):
-                            gr.Markdown("You can mask images by their categories via semantic segmentation. Please enter category ids (integers), separated by `+`. Visit [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/oneformer/data/datasets/register_ade20k_panoptic.py#L12-L207) for ade20k and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map.")
+                            gr.Markdown(
+                                "You can mask images by their categories via semantic segmentation. Please enter category ids (integers), separated by `+`. "
+                                "Visit [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/oneformer/data/datasets/register_ade20k_panoptic.py#L12-L207) for ade20k "
+                                "and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map.")
                             crop_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco"], value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
                             crop_category_input = gr.Textbox(placeholder="Enter categody ids, separated by +. For example, if you want bed+person, your input should be 7+12 for ade20k and 65+1 for coco.", label="Enter category IDs")
                             with gr.Tabs():
@@ -661,11 +664,11 @@ class Script(scripts.Script):
                                         fn=categorical_mask,
                                         inputs=[sam_model_name, crop_processor, crop_category_input, crop_input_image, *auto_sam_config],
                                         outputs=[crop_output_gallery, crop_result])
-                                    crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, self.max_cn_num())
+                                    crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, max_cn_num())
                                     crop_dilation_checkbox, crop_dilation_output_gallery = ui_dilation(crop_output_gallery, crop_padding, crop_input_image)
                                     crop_single_image_process = (
                                         crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx, 
-                                        crop_input_image, crop_output_gallery, 
+                                        crop_input_image, crop_output_gallery, crop_padding, 
                                         crop_dilation_checkbox, crop_dilation_output_gallery)
                                     if is_img2img:
                                         crop_single_image_process += ui_sketch(sam_input_image)
@@ -675,7 +678,9 @@ class Script(scripts.Script):
                                     crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, _, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, crop_batch_run_button, crop_batch_progress = ui_batch(False)
                                     crop_batch_run_button.click(
                                         fn=categorical_mask_batch,
-                                        inputs=[sam_model_name, crop_processor, crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, *auto_sam_config],
+                                        inputs=[sam_model_name, crop_processor, crop_category_input, crop_batch_dilation_amt, 
+                                                crop_batch_source_dir, crop_batch_dest_dir, 
+                                                crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, *auto_sam_config],
                                         outputs=[crop_batch_progress])
 
                 with gr.Row():
@@ -693,35 +698,7 @@ class Script(scripts.Script):
         
         return ui_process
 
-    def process(self, p: StableDiffusionProcessingImg2Img, *args):
-                # enable_copy_inpaint=False, input_image=None, mask=None, chosen_mask=0, dilation_enabled=False, expanded_mask=None, enable_copy_cn_inpaint=False, cn_num=0):
-                # cnet_upload_enable=False, cnet_upload_to_img2img_enable=False, cnet_upload_num=0, cnet_upload_img_inpaint=None, cnet_upload_mask_inpaint=None):
-        pass # TODO
-        # if cnet_upload_enable:
-        #     if cnet_upload_to_img2img_enable:
-        #         p.init_images = [cnet_upload_img_inpaint]
-        #         p.image_mask = cnet_upload_mask_inpaint
-        #     self.set_p_value(p, 'control_net_input_image', cnet_upload_num, {"image": cnet_upload_img_inpaint, "mask": cnet_upload_mask_inpaint.convert("L")})
-        
-        # if input_image is not None and mask is not None:
-        #     image_mask = Image.open(expanded_mask[1]['name'] if dilation_enabled and expanded_mask is not None else mask[chosen_mask + 3]['name'])
-        #     if enable_copy_inpaint and isinstance(p, StableDiffusionProcessingImg2Img):
-        #         p.init_images = [input_image]
-        #         p.image_mask = image_mask
-        #     if enable_copy_cn_inpaint and cn_num < self.max_cn_num():
-        #         self.set_p_value(p, 'control_net_input_image', cn_num, {"image": input_image, "mask": image_mask.convert("L")})
-        
-    def set_p_value(self, p: StableDiffusionProcessing, attr: str, idx: int, v):
-        value = getattr(p, attr, None)
-        if isinstance(value, list):
-            value[idx] = v
-        else:
-            # if value is None, ControlNet uses default value
-            value = [value] * self.max_cn_num()
-            value[idx] = v
-        setattr(p, attr, value)
-
-    def max_cn_num(self):
-        if shared.opts.data is None:
-            return 0
-        return int(shared.opts.data.get('control_net_max_models_num', 0))
+    def process(self, p: StableDiffusionProcessing, *args):
+        is_img2img = isinstance(p, StableDiffusionProcessingImg2Img)
+        process_unit = SAMProcessUnit(args, is_img2img)
+        process_unit.set_process_attributes(p)
