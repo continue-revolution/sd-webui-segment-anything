@@ -298,7 +298,7 @@ def dino_batch_process(
 
 
 def cnet_seg(
-    sam_model_name, cnet_seg_input_image, cnet_seg_processor, 
+    sam_model_name, cnet_seg_input_image, cnet_seg_processor, cnet_seg_processor_res, 
     auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
@@ -310,7 +310,7 @@ def cnet_seg(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, auto_sam_output_mode)
-    outputs = semantic_segmentation(cnet_seg_input_image, cnet_seg_processor)
+    outputs = semantic_segmentation(cnet_seg_input_image, cnet_seg_processor, cnet_seg_processor_res)
     sem_sam_garbage_collect()
     garbage_collect(sam)
     return outputs
@@ -335,7 +335,7 @@ def image_layout(
 
 
 def categorical_mask(
-    sam_model_name, crop_processor, crop_category_input, crop_input_image, 
+    sam_model_name, crop_processor, crop_processor_res, crop_category_input, crop_input_image, 
     auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
@@ -346,7 +346,7 @@ def categorical_mask(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "coco_rle")
-    outputs = categorical_mask_image(crop_processor, crop_category_input, crop_input_image)
+    outputs = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image)
     sem_sam_garbage_collect()
     garbage_collect(sam)
     if isinstance(outputs, str):
@@ -356,7 +356,8 @@ def categorical_mask(
 
 
 def categorical_mask_batch(
-    sam_model_name, crop_processor, crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, 
+    sam_model_name, crop_processor, crop_processor_res, 
+    crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, 
     crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, 
     auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
@@ -374,7 +375,7 @@ def categorical_mask_batch(
         print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
         try:
             crop_input_image = Image.open(input_image_file).convert("RGB")
-            outputs = categorical_mask_image(crop_processor, crop_category_input, crop_input_image)
+            outputs = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image)
             if isinstance(outputs, str):
                 outputs = f"Image {image_index}: {outputs}"
                 print(outputs)
@@ -478,6 +479,16 @@ def ui_batch(is_dino):
     dino_batch_run_button = gr.Button(value="Start batch process")
     dino_batch_progress = gr.Text(value="", label="GroundingDINO batch progress status")
     return dino_batch_dilation_amt, dino_batch_source_dir, dino_batch_dest_dir, dino_batch_output_per_image, dino_batch_save_image, dino_batch_save_mask, dino_batch_save_image_with_mask, dino_batch_save_background, dino_batch_run_button, dino_batch_progress
+
+
+def ui_processor(use_random=True):
+    processor_choices = ["seg_ufade20k", "seg_ofade20k", "seg_ofcoco"]
+    if use_random:
+        processor_choices.append("random")
+    with gr.Row(): # TODO: Add pixel perfect, preprocessor_res > 64
+        cnet_seg_processor = gr.Radio(choices=processor_choices, value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
+        cnet_seg_processor_res = gr.Slider(label="Preprocessor res", value=512, minimum=64, maximum=2048, step=1)
+    return cnet_seg_processor, cnet_seg_processor_res
 
 
 class Script(scripts.Script):
@@ -604,14 +615,14 @@ class Script(scripts.Script):
                             gr.Markdown(
                                 "You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. "
                                 "Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
-                            cnet_seg_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco", "random"], value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
+                            cnet_seg_processor, cnet_seg_processor_res = ui_processor()
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
                             cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
                             cnet_seg_submit = gr.Button(value="Generate segmentation image")
                             cnet_seg_status = gr.Text(value="", label="Segmentation status")
                             cnet_seg_submit.click(
                                 fn=cnet_seg,
-                                inputs=[sam_model_name, cnet_seg_input_image, cnet_seg_processor, *auto_sam_config],
+                                inputs=[sam_model_name, cnet_seg_input_image, cnet_seg_processor, cnet_seg_processor_res, *auto_sam_config],
                                 outputs=[cnet_seg_output_gallery, cnet_seg_status])
                             with gr.Row(visible=(max_cn_num() > 0)):
                                 cnet_seg_enable_copy = gr.Checkbox(value=False, label='Copy to ControlNet Segmentation')
@@ -649,7 +660,7 @@ class Script(scripts.Script):
                                 "You can mask images by their categories via semantic segmentation. Please enter category ids (integers), separated by `+`. "
                                 "Visit [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/oneformer/data/datasets/register_ade20k_panoptic.py#L12-L207) for ade20k "
                                 "and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map.")
-                            crop_processor = gr.Radio(choices=["seg_ufade20k", "seg_ofade20k", "seg_ofcoco"], value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
+                            crop_processor, crop_processor_res = ui_processor(False)
                             crop_category_input = gr.Textbox(placeholder="Enter categody ids, separated by +. For example, if you want bed+person, your input should be 7+12 for ade20k and 65+1 for coco.", label="Enter category IDs")
                             with gr.Tabs():
                                 with gr.TabItem(label="Single Image"):
@@ -660,7 +671,7 @@ class Script(scripts.Script):
                                     crop_result = gr.Text(value="", label="Categorical mask status")
                                     crop_submit.click(
                                         fn=categorical_mask,
-                                        inputs=[sam_model_name, crop_processor, crop_category_input, crop_input_image, *auto_sam_config],
+                                        inputs=[sam_model_name, crop_processor, crop_processor_res, crop_category_input, crop_input_image, *auto_sam_config],
                                         outputs=[crop_output_gallery, crop_result])
                                     crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx = ui_inpaint(is_img2img, max_cn_num())
                                     crop_dilation_checkbox, crop_dilation_output_gallery = ui_dilation(crop_output_gallery, crop_padding, crop_input_image)
@@ -676,8 +687,8 @@ class Script(scripts.Script):
                                     crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, _, crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, crop_batch_run_button, crop_batch_progress = ui_batch(False)
                                     crop_batch_run_button.click(
                                         fn=categorical_mask_batch,
-                                        inputs=[sam_model_name, crop_processor, crop_category_input, crop_batch_dilation_amt, 
-                                                crop_batch_source_dir, crop_batch_dest_dir, 
+                                        inputs=[sam_model_name, crop_processor, crop_processor_res, 
+                                                crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, 
                                                 crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, *auto_sam_config],
                                         outputs=[crop_batch_progress])
 
