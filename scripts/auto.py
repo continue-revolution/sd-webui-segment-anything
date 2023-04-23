@@ -16,7 +16,6 @@ global_sam: SamAutomaticMaskGenerator = None
 sem_seg_cache = OrderedDict()
 sam_annotator_dir = os.path.join(scripts.basedir(), "annotator")
 original_uniformer_inference_segmentor = None
-original_oneformer_draw_sem_seg = None
 
 
 def blend_image_and_seg(image, seg, alpha=0.5):
@@ -77,18 +76,21 @@ def random_segmentation(img):
     annotations = global_sam.generate(img_np)
     annotations = sorted(annotations, key=lambda x: x['area'], reverse=True)
     print(f"Auto SAM generated {len(annotations)} masks")
-    H, W, C = img_np.shape
-    cnet_input = np.zeros((H, W), dtype=np.uint16)
+    H, W, _ = img_np.shape
+    color_map = np.zeros((H, W, 3), dtype=np.uint8)
+    detected_map_tmp = np.zeros((H, W), dtype=np.uint16)
     for idx, annotation in enumerate(annotations):
         current_seg = annotation['segmentation']
-        cnet_input[current_seg] = idx + 1 # TODO: Add random mask, not the ugly detected map
-    detected_map = np.zeros((cnet_input.shape[0], cnet_input.shape[1], 3))
-    detected_map[:, :, 0] = cnet_input % 256
-    detected_map[:, :, 1] = cnet_input // 256
+        color_map[current_seg] = np.random.randint(0, 255, (3))
+        detected_map_tmp[current_seg] = idx + 1
+    detected_map = np.zeros((detected_map_tmp.shape[0], detected_map_tmp.shape[1], 3))
+    detected_map[:, :, 0] = detected_map_tmp % 256
+    detected_map[:, :, 1] = detected_map_tmp // 256
     from annotator.util import HWC3
     detected_map = HWC3(detected_map.astype(np.uint8))
     print("Auto SAM generation process end")
-    return [blend_image_and_seg(img_np, detected_map), Image.fromarray(detected_map)], "Random segmentation done. Left is blended image, right is ControlNet input."
+    return [blend_image_and_seg(img_np, color_map), Image.fromarray(color_map), Image.fromarray(detected_map)], \
+        "Random segmentation done. Left above (0) is blended image, right above (1) is random segmentation, left below (2) is Edit-Anything control input."
 
 
 def image_layer_image(layout_input_image, layout_output_path):
@@ -123,24 +125,43 @@ def image_layer_internal(layout_input_image_or_path, layout_output_path):
     return "Done"
 
 
-def inject_inference_segmentor(model, img):
+def inject_uniformer_inference_segmentor(model, img):
     original_result = original_uniformer_inference_segmentor(model, img)
     original_result[0] = strengthen_sem_seg(original_result[0], img)
     return original_result
 
 
-def inject_sem_seg(self, sem_seg, area_threshold=None, alpha=0.8, is_text=True, edge_color=(1.0, 1.0, 1.0)):
-    if isinstance(sem_seg, torch.Tensor):
-        sem_seg = sem_seg.numpy() # TODO: inject another function for oneformer
-    return original_oneformer_draw_sem_seg(self, strengthen_sem_seg(sem_seg), area_threshold, alpha, is_text, edge_color)
-
-
-def inject_oodss(self, sem_seg, area_threshold=None, alpha=0.8, is_text=True, edge_color=(1.0, 1.0, 1.0)):
-    return sem_seg
-
-
-def inject_show_result_pyplot(model, img, result, palette=None, fig_size=(15, 10), opacity=0.5, title='', block=True):
+def inject_uniformer_show_result_pyplot(model, img, result, palette=None, fig_size=(15, 10), opacity=0.5, title='', block=True):
     return result[0]
+
+
+def inject_oneformer_semantic_run(img, predictor, metadata):
+    predictions = predictor(img[:, :, ::-1], "semantic")  # Predictor of OneFormer must use BGR image !!!
+    original_result = predictions["sem_seg"].argmax(dim=0).cpu().numpy()
+    from annotator.oneformer.oneformer.demo.visualizer import Visualizer, ColorMode
+    visualizer_map = Visualizer(img, is_img=False, metadata=metadata, instance_mode=ColorMode.IMAGE)
+    out_map = visualizer_map.draw_sem_seg(torch.tensor(strengthen_sem_seg(original_result, img), device='cpu'), alpha=1, is_text=False).get_image()
+    return out_map
+
+
+def inject_oneformer_semantic_run_categorical_mask(img, predictor, metadata):
+    predictions = predictor(img[:, :, ::-1], "semantic")  # Predictor of OneFormer must use BGR image !!!
+    original_result = predictions["sem_seg"].argmax(dim=0).cpu().numpy()
+    return strengthen_sem_seg(original_result, img)
+
+
+def inject_oneformer_detector_call(self, img):
+    if self.model is None:
+        self.load_model()
+    self.model.model.to(self.device)
+    return inject_oneformer_semantic_run(img, self.model, self.metadata)
+
+
+def inject_oneformer_detector_call_categorical_mask(self, img):
+    if self.model is None:
+        self.load_model()
+    self.model.model.to(self.device)
+    return inject_oneformer_semantic_run_categorical_mask(img, self.model, self.metadata)
 
 
 def _uniformer(img):
@@ -160,23 +181,25 @@ def _oneformer(img, dataset="coco"):
     return result
 
 
-def semantic_segmentation(input_image, annotator_name, processor_res):
+def semantic_segmentation(input_image, annotator_name, processor_res, 
+                          use_pixel_perfect, resize_mode, target_W, target_H):
     if input_image is None:
         return [], "No input image."
     if "seg" in annotator_name:
         if not os.path.isdir(os.path.join(scripts.basedir(), "annotator")) and not create_symbolic_link():
             return [], "ControlNet extension not found."
         global original_uniformer_inference_segmentor
-        global original_oneformer_draw_sem_seg
+        input_image_np = np.array(input_image)
+        processor_res = pixel_perfect_lllyasviel(input_image_np, processor_res, use_pixel_perfect, resize_mode, target_W, target_H)
         from annotator.util import resize_image, HWC3
-        input_image = resize_image(HWC3(np.array(input_image)), processor_res)
+        input_image = resize_image(HWC3(input_image_np), processor_res)
         print("Generating semantic segmentation without SAM")
         if annotator_name == "seg_ufade20k":
             original_semseg = _uniformer(input_image)
             print("Generating semantic segmentation with SAM")
             import annotator.uniformer as uniformer
             original_uniformer_inference_segmentor = uniformer.inference_segmentor
-            uniformer.inference_segmentor = inject_inference_segmentor
+            uniformer.inference_segmentor = inject_uniformer_inference_segmentor
             sam_semseg = _uniformer(input_image)
             uniformer.inference_segmentor = original_uniformer_inference_segmentor
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
@@ -185,18 +208,19 @@ def semantic_segmentation(input_image, annotator_name, processor_res):
             dataset = annotator_name.split('_')[-1][2:]
             original_semseg = _oneformer(input_image, dataset=dataset)
             print("Generating semantic segmentation with SAM")
-            from annotator.oneformer.oneformer.demo.visualizer import Visualizer
-            original_oneformer_draw_sem_seg = Visualizer.draw_sem_seg
-            Visualizer.draw_sem_seg = inject_sem_seg
+            from annotator.oneformer import OneformerDetector
+            original_oneformer_call = OneformerDetector.__call__
+            OneformerDetector.__call__ = inject_oneformer_detector_call
             sam_semseg = _oneformer(input_image, dataset=dataset)
-            Visualizer.draw_sem_seg = original_oneformer_draw_sem_seg
+            OneformerDetector.__call__ = original_oneformer_call
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
             return output_gallery, f"Oneformer semantic segmentation of {dataset} done. Left is segmentation before SAM, right is segmentation after SAM."
     else:
         return random_segmentation(input_image)
 
 
-def categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image):
+def categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image,
+                           crop_pixel_perfect, crop_resize_mode, target_W, target_H):
     if crop_input_image is None:
         return "No input image."
     if not os.path.isdir(os.path.join(scripts.basedir(), "annotator")) and not create_symbolic_link():
@@ -208,29 +232,29 @@ def categorical_mask_image(crop_processor, crop_processor_res, crop_category_inp
         filter_classes = [int(i) for i in filter_classes]
     except:
         return "Illegal class id. You may have input some string."
+    crop_input_image_np = np.array(crop_input_image)
+    crop_processor_res = pixel_perfect_lllyasviel(crop_input_image_np, crop_processor_res, crop_pixel_perfect, crop_resize_mode, target_W, target_H)
     from annotator.util import resize_image, HWC3
-    crop_input_image = resize_image(HWC3(np.array(crop_input_image)), crop_processor_res)
+    crop_input_image = resize_image(HWC3(crop_input_image_np), crop_processor_res)
     crop_input_image_copy = copy.deepcopy(crop_input_image)
     global original_uniformer_inference_segmentor
-    global original_oneformer_draw_sem_seg
     print(f"Generating categories with processor {crop_processor}")
     if crop_processor == "seg_ufade20k":
         import annotator.uniformer as uniformer
         original_uniformer_inference_segmentor = uniformer.inference_segmentor
-        uniformer.inference_segmentor = inject_inference_segmentor
+        uniformer.inference_segmentor = inject_uniformer_inference_segmentor
         tmp_ouis = uniformer.show_result_pyplot
-        uniformer.show_result_pyplot = inject_show_result_pyplot
+        uniformer.show_result_pyplot = inject_uniformer_show_result_pyplot
         sam_semseg = _uniformer(crop_input_image)
         uniformer.inference_segmentor = original_uniformer_inference_segmentor
         uniformer.show_result_pyplot = tmp_ouis
     else:
         dataset = crop_processor.split('_')[-1][2:]
-        from annotator.oneformer.oneformer.demo.visualizer import Visualizer
-        tmp_oodss = Visualizer.draw_sem_seg
-        Visualizer.draw_sem_seg = inject_sem_seg
-        original_oneformer_draw_sem_seg = inject_oodss
+        from annotator.oneformer import OneformerDetector
+        original_oneformer_call = OneformerDetector.__call__
+        OneformerDetector.__call__ = inject_oneformer_detector_call_categorical_mask
         sam_semseg = _oneformer(crop_input_image, dataset=dataset)
-        Visualizer.draw_sem_seg = tmp_oodss
+        OneformerDetector.__call__ = original_oneformer_call
     mask = np.zeros(sam_semseg.shape, dtype=np.bool_)
     for i in filter_classes:
         mask[sam_semseg == i] = True
@@ -250,3 +274,27 @@ def register_auto_sam(sam,
         auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
         auto_sam_crop_n_points_downscale_factor, None, 
         auto_sam_min_mask_region_area, auto_sam_output_mode)
+
+
+def pixel_perfect_lllyasviel(input_image, processor_res, use_pixel_perfect, resize_mode, target_W, target_H):
+    preprocessor_resolution = processor_res
+    if use_pixel_perfect:
+        raw_H, raw_W, _ = input_image.shape
+        k0 = float(target_H) / float(raw_H)
+        k1 = float(target_W) / float(raw_W)
+        if resize_mode == 2:
+            estimation = min(k0, k1) * float(min(raw_H, raw_W))
+        else:
+            estimation = max(k0, k1) * float(min(raw_H, raw_W))
+        preprocessor_resolution = int(np.round(float(estimation) / 64.0)) * 64
+        print(f'Pixel Perfect Mode (written by lllyasviel) Enabled.')
+        print(f'resize_mode = {str(resize_mode)}')
+        print(f'raw_H = {raw_H}')
+        print(f'raw_W = {raw_W}')
+        print(f'target_H = {target_H}')
+        print(f'target_W = {target_W}')
+        print(f'estimation = {estimation}')
+    elif processor_res <= 64:
+        preprocessor_resolution = 512
+    print(f'preprocessor resolution = {preprocessor_resolution}')
+    return preprocessor_resolution

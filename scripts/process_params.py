@@ -79,17 +79,19 @@ class SAMProcessUnit:
         self.cnet_seg_output_gallery: List[Dict] = None
         self.cnet_seg_enable_copy: bool = False
         self.cnet_seg_idx: int = 0
+        self.cnet_seg_gallery_input: int = 0
         args = self.init_cnet_seg_process(args)
 
         self.crop_inpaint_unit = SAMInpaintUnit(args, is_img2img)
         
         
     def init_cnet_seg_process(self, args):
-        csp_args    = args[:3]
+        csp_args    = args[:4]
         self.cnet_seg_output_gallery    = csp_args[0]
         self.cnet_seg_enable_copy       = csp_args[1]
         self.cnet_seg_idx               = csp_args[2]
-        return args[3:]
+        self.cnet_seg_gallery_input     = csp_args[3]
+        return args[4:]
 
     
     def set_process_attributes(self, p):
@@ -99,6 +101,7 @@ class SAMProcessUnit:
         if inpaint_image is None:
             inpaint_image, inpaint_mask = self.crop_inpaint_unit.get_input_and_mask(inpaint_mask_blur)
             inpaint_cn_num = self.crop_inpaint_unit.cnet_inpaint_idx
+        print(inpaint_image is not None, inpaint_mask is not None)
         if inpaint_image is not None and inpaint_mask is not None:
             if self.is_img2img:
                 p.init_images = [inpaint_image]
@@ -108,6 +111,9 @@ class SAMProcessUnit:
                                 {"image": inpaint_image, "mask": inpaint_mask.convert("L")})
         
         if self.cnet_seg_enable_copy and self.cnet_seg_output_gallery is not None:
+            cnet_seg_gallery_index = 1
+            if len(self.cnet_seg_output_gallery) == 3 and self.cnet_seg_gallery_input is not None:
+                cnet_seg_gallery_index += self.cnet_seg_gallery_input
             self.set_p_value(p, 'control_net_input_image', self.cnet_seg_idx, 
                              Image.fromarray(self.cnet_seg_output_gallery[1]['name']))
 
