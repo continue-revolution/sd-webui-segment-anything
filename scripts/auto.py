@@ -92,7 +92,7 @@ def random_segmentation(img):
 
 
 def image_layer_image(layout_input_image, layout_output_path):
-    img_np = np.array(layout_input_image)
+    img_np = np.array(layout_input_image.convert("RGB"))
     annotations = global_sam.generate(img_np)
     print(f"AutoSAM generated {len(annotations)} annotations")
     annotations = sorted(annotations, key=lambda x: x['area'])
@@ -108,12 +108,12 @@ def image_layer_image(layout_input_image, layout_output_path):
 
 def image_layer_internal(layout_input_image_or_path, layout_output_path):
     if isinstance(layout_input_image_or_path, str):
-        print("Batch processing")
+        print("Image layer division batch processing")
         all_files = glob.glob(os.path.join(layout_input_image_or_path, "*"))
         for image_index, input_image_file in enumerate(all_files):
             print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
             try:
-                input_image = Image.open(input_image_file).convert("RGB")
+                input_image = Image.open(input_image_file)
                 output_directory = os.path.join(layout_output_path, os.path.splitext(os.path.basename(input_image_file))[0])
                 image_layer_image(input_image, output_directory)
             except:
@@ -210,6 +210,7 @@ def categorical_mask_image(crop_processor, crop_processor_res, crop_category_inp
         return "Illegal class id. You may have input some string."
     from annotator.util import resize_image, HWC3
     crop_input_image = resize_image(HWC3(np.array(crop_input_image)), crop_processor_res)
+    crop_input_image_copy = copy.deepcopy(crop_input_image)
     global original_uniformer_inference_segmentor
     global original_oneformer_draw_sem_seg
     print(f"Generating categories with processor {crop_processor}")
@@ -233,7 +234,7 @@ def categorical_mask_image(crop_processor, crop_processor_res, crop_category_inp
     mask = np.zeros(sam_semseg.shape, dtype=np.bool_)
     for i in filter_classes:
         mask[sam_semseg == i] = True
-    return mask
+    return mask, crop_input_image_copy
 
 
 def register_auto_sam(sam, 

@@ -346,12 +346,13 @@ def categorical_mask(
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "coco_rle")
-    outputs = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image)
+    outputs, resized_input_image = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image)
+    resized_input_image = np.array(Image.fromarray(resized_input_image).convert("RGBA"))
     sem_sam_garbage_collect()
     garbage_collect(sam)
     if isinstance(outputs, str):
-        return [], outputs
-    output_gallery = create_mask_output(np.array(crop_input_image), outputs[None, ...], None, False)
+        return [], outputs # TODO: Add a hidden gradio element to save the resized image
+    output_gallery = create_mask_output(resized_input_image, outputs[None, None, ...], None, True)
     return output_gallery, "Done"
 
 
@@ -375,7 +376,7 @@ def categorical_mask_batch(
         print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
         try:
             crop_input_image = Image.open(input_image_file).convert("RGB")
-            outputs = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image)
+            outputs, resized_input_image = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image)
             if isinstance(outputs, str):
                 outputs = f"Image {image_index}: {outputs}"
                 print(outputs)
@@ -383,7 +384,7 @@ def categorical_mask_batch(
                 continue
             create_mask_batch_output(
                 input_image_file, crop_batch_dest_dir, 
-                np.array(crop_input_image), outputs[None, ...], None, crop_batch_dilation_amt, 
+                resized_input_image, outputs[None, None, ...], None, crop_batch_dilation_amt, 
                 crop_batch_save_image, crop_batch_save_mask, crop_batch_save_background, crop_batch_save_image_with_mask)
         except:
             print(f"File {input_image_file} not image, skipped.")
@@ -666,7 +667,7 @@ class Script(scripts.Script):
                                 with gr.TabItem(label="Single Image"):
                                     crop_input_image = gr.Image(label="Image to be masked", source="upload", type="pil", image_mode="RGBA")
                                     crop_output_gallery = gr.Gallery(label="Output").style(grid=3)
-                                    crop_padding = gr.Number(value=-2, visible=False, interactive=False)
+                                    crop_padding = gr.Number(value=-2, visible=False, interactive=False, precision=0)
                                     crop_submit = gr.Button(value="Generate mask")
                                     crop_result = gr.Text(value="", label="Categorical mask status")
                                     crop_submit.click(
