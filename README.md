@@ -78,6 +78,8 @@ However, there are some existing problems with AutoSAM:
 
 ## How to Use
 
+If you have previously enabled other copys while using this extension, you may want to click `Uncheck all copies` at the bottom of this extension UI, to prevent other copies from affecting your current page.
+
 ### Single Image
 1. Upload your image
 2. Optionally add point prompts on the image. Left click for positive point prompt (black dot), right click for negative point prompt (red dot), left click any dot again to cancel the prompt. You must add point prompt if you do not wish to use GroundingDINO.
