@@ -1,94 +1,77 @@
 # Segment Anything for Stable Diffusion WebUI
 
-**DO NOT checkout this branch! You will not be able to use it. I am completely refactoring my code inside this repository.**
-
 This extension aim for helping [stable diffusion webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) users to use [segment anything](https://github.com/facebookresearch/segment-anything/) and [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) to do stable diffusion inpainting and create LoRA/LyCORIS training set. If you want to cut out images, you are also recommended to use `Batch Process` functionality described [here](#batch-process).
 
 ## News
 
-- `2023/04/10`: [Release] SAM extension released! Check [How to Use](#how-to-use) and [Demo](#demo) for more detail.
+- `2023/04/10`: [Release] SAM extension released!
 - `2023/04/12`: [Feature] Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
-- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! Check [Note about GroundingDINO](https://github.com/continue-revolution/sd-webui-segment-anything#note-about-groundingdino), [How to Use](#how-to-use) and [Demo](#demo) for more detail.
-- `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! Check [API Support](#api-support) for more detail.
-- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to the most up-to-date version to use it. ControlNet inpainting has far better performance compared to general-purpose models, and you do not need to download inpainting-specific models anymore. Check [How to Use](#how-to-use) for more detail.
-- `2023/04/20`: [Feature] Automatic segmentation support is on the way. It will be released very soon. It includes support for 
+- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released!
+- `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
+- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to the most up-to-date version to use it. ControlNet inpainting has far better performance compared to general-purpose models, and you do not need to download inpainting-specific models anymore.
+- `2023/04/24`: [Feature] Automatic segmentation support released! This should hopefully be the final huge update. Note that some functionalities of this update requires you to have [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) installed. This update includes support for 
     - [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) semantic segmentation
-    - [Edit-Anything](https://github.com/sail-sg/EditAnything) un-semantic segmentation
+    - [Edit-Anything](https://github.com/sail-sg/EditAnything) un-semantic segmentation (Not tested)
     - Image masking with categories (single image + batch process)
     - Image layout generation (single image + batch process)
-    - Some side features:
-        - Colorful inpainting for img2img
-        - Draw un-masked region for ControlNet inpainting
-        - Draw colorful mask once for both cnet and img2img
-
-## Plan
-
-Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
-
-- [ ] Support [Rich Text to Image](https://github.com/SongweiGe/rich-text-to-image) (perhaps will be supported in another extension, perhaps will not be supported)
-- [ ] Support different text control different region of mask (perhaps will be supported in a separate gradio app)
-- [ ] Separate this extension into a new image processing gradio app
-- [ ] Support WebUI older commits (e.g. `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`)
-
-Not all plans may ultimately be implemented. Some ideas might not work and be abandoned. Support for old commits has low priority, so I would encourage you to update your WebUI as soon as you can.
-
-## Update your WebUI version
-
-If you are unable to add dot, observe [list index out of range](https://github.com/continue-revolution/sd-webui-segment-anything/issues/6) error on your terminal, or any other error, the most probable reason is that your WebUI is outdated (such as you are using this commitment: `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`).
-
-In most cases, updating your WebUI can solve your problem. Before you submit your issue and before I release support for some old version of WebUI, I ask that you firstly check your version of your WebUI.
+    - Draw un-masked region for ControlNet inpainting on txt2img panel
 
 ## Note about GroundingDINO
 
-We have supported GroundingDINO. It has the following functionality:
-- You can use text prompt to automatically generate masks
-- You can use point prompts with **ONE mask** to generate masks
+We have supported GroundingDINO. It has the following functionalities:
+- You can use text prompt to automatically generate bounding boxes. You can separate different category names with `.`. SAM can convert these bounding boxes to masks.
+- You can use point prompts with **ONE bounding box** to generate masks
 - You can go to `Batch Process` tab to cut out images and get LoRA/LyCORIS training set
 
 However, there are some existing problems with GroundingDINO:
 - GroundingDINO will be install when you firstly use GroundingDINO features, instead of when you initiate the WebUI. Make sure that your terminal can have access to GitHub. Otherwise you have to download manually.
 - Downloading GroundingDINO requires your device to compile C++, which might take a long time and be problematic. I honestly can do very little about such problem. Please go to [Grounded Segment Anything Issue](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and submit an issue there. If you submit an issue in my repository, I will redirect your issue there. Despite of this, you can still use this extension for point prompts->segmentation masks even if you cannot install GroundingDINO, don't worry.
-- If you want to use point prompts, SAM can at most accept one mask. In this case, my script will check if there are multiple masks. If multiple masks, my script will disgard all point prompts; otherwise all point prompts will be effective. You may always select one mask you want.
+- If you want to use point prompts, SAM can at most accept one bounding box. This extension will check if there are multiple bounding boxes. If multiple bounding boxes, this extension will disgard all point prompts; otherwise all point prompts will be effective. You may always select one bounding box you want.
+- If you cannot compile `_C`, it's most probably because you did not install CUDA Toolkit. Follow steps decribed [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/32#issuecomment-1513873296). DO NOT skip steps.
 
 For more detail, check [How to Use](#how-to-use) and [Demo](#demo).
 
 ## How to Use
 
-### Step 1:
-
 Download this extension to `${sd-webui}/extensions` use whatever way you like (git clone or install from UI)
 
-### Step 2:
-
-Download segment-anything model from [here](https://github.com/facebookresearch/segment-anything#model-checkpoints) to `${sd-webui}/models/sam`. **Do not change model name, otherwise this extension may fail due to a bug inside segment anything.**
+Download segment-anything model using link below to `${sd-webui}/models/sam`. **Do not change model name, otherwise this extension may fail due to a bug inside segment anything.**
 
 To give you a reference, [vit_h](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) is 2.56GB, [vit_l](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth) is 1.25GB, [vit_b](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) is 375MB. I myself tested vit_h on NVIDIA 3090 Ti which is good. If you encounter VRAM problem, you should switch to smaller models.
 
-### Step 3:
-
-#### Single Image
+### Single Image
 - Upload your image
 - Optionally add point prompts on the image. Left click for positive point prompt (black dot), right click for negative point prompt (red dot), left click any dot again to cancel the prompt. You must add point prompt if you do not wish to use GroundingDINO.
-- Optionally check `Enable GroundingDINO`, select GroundingDINO model you want, write text prompt and pick a box threshold. You must write text prompt if you do not wish to use point prompts. Note that GroundingDINO models will be automatically downloaded from [HuggingFace](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main). If your terminal cannot visit HuggingFace, please manually download the model and put it under `${sd-webui-sam}/models/grounding-dino`.
+- Optionally check `Enable GroundingDINO`, select GroundingDINO model you want, write text prompt (separate different categories with `.`) and pick a box threshold (Too high threshold with result in no bounding box). You must write text prompt if you do not wish to use point prompts. Note that GroundingDINO models will be automatically downloaded from [HuggingFace](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main). If your terminal cannot visit HuggingFace, please manually download the model and put it under `${sd-webui-sam}/models/grounding-dino`.
 - Optionally enable previewing GroundingDINO bounding box and click `Generate bounding box`. You must write text prompt to preview bounding box. After you see the boxes with number marked on the left corner, uncheck all the boxes you do not want. If you uncheck all boxes, you will have to add point prompts to generate masks.
 - Click `Preview Segmentation` button. Due to the limitation of SAM, if there are multiple bounding boxes, your point prompts will not take effect when generating masks.
 - Choose your favorite segmentation.
 - Optionally check `Expand Mask` and specify the amount, then click `Update Mask`.
 
-##### img2img Inpainting
-- Check `Copy to Inpaint Upload`. Note that you **must** be at img2img tab to use this functionality.
-- Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompt, configurate and click `Generate`.
+#### txt2img
+- You may only copy image and mask to ControlNet inpainting. 
+- You may check `ControlNet inpaint not masked`, where the mask will be inverted.
+- You should select the correct ControlNet index where you are using inpainting, if you wish to use multi-ControlNet. 
 
-##### ControlNet Inpainting
+#### img2img
 - Update your ControlNet (very important, see [this pull request](https://github.com/Mikubill/sd-webui-controlnet/pull/859)) and check `Allow other script to control this extension` on your settings of ControlNet.
-- Check `Copy to ControlNet Inpaint` and select the ControlNet panel for inpainting if you want to use multi-ControlNet. You can be either at img2img tab or at txt2img tab to use this functionality.
-- Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel, as SAM extension will help you to do that. Write your prompts, configurate A1111 panel and click `Generate`.
+- Check `Copy to Inpaint Uploade & ControlNet Inpainting`. There is no need to select ControlNet index.
+- Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel.
+- Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompts, configurate A1111 panel and click `Generate`.
 
-#### Batch Process
-- Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images. **The source directory should only contain images**.
-- `Output per image` gives you a choice on configurating the number of masks per bounding box. I would highly recommend choosing 3, since some mask might be wierd.
-- `save mask` gives you a choice to save the black & white mask and `Save original image with mask and bounding box` enables you to save image+mask+bounding_box.
+### Batch Process
+- Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images.
+- Choose `Output per image` to configurate the number of masks per bounding box. I highly recommend 3, since some masks might be wierd.
+- Click/unclick several checkboxes to configurate the images you want to save.
 - Click `Start batch process` and wait. If you see "Done" below this button, you are all set.
+
+### Auto SAM
+
+#### ControlNet
+
+#### Image Layout
+
+#### Mask by Category
 
 ## Demo
 Point prompts demo
@@ -155,6 +138,39 @@ for dct in res.json():
     image = Image.open(BytesIO(image_data))
     image.show()
 ```
+
+## FAQ
+
+Thanks for suggestions from [GitHub Issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
+
+Q: Do you plan to support old commits of Stable Diffusion WebUI, like `a9fed7c364061ae6efb37f797b6b522cb3cf7aa2`?
+
+A: No, because the current version of WebUI is stable, and some integrated package authors have also updated their packages (for example, if you are using the package from [@Akegarasu](https://github.com/Akegarasu), i.e. 秋叶整合包, it has already been updated according to [this video](https://www.bilibili.com/video/BV1iM4y1y7oA)). Also, supporting different versions will be a huge time commitment, during which I can create many more features. Please update your WebUI and it is safe to use.
+
+Q: I cannot install GroundingDINO. What should I do?
+
+A: The most common reason is that `_C` is unable to compile. Please install cuda toolkit from NVIDIA page. Make sure that the version matches your PyTorch version.
+
+Q: Do you plan to support color inpainting?
+
+A: Not at this moment, because gradio wierdly enlarge the input image which makes the user experience extremely bad. If you copy image to color inpainting panel, your browser will be significantly slower, or even crash. I have already implemented this feature, though, but I just made it invisible.
+
+Q: Do you plan to support [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything), [Edit-Anything](https://github.com/sail-sg/EditAnything), or any other popular SD+SAM repositories?
+
+A: [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything) and [Edit-Anything](https://github.com/sail-sg/EditAnything) have been supported. For Inpaint-Anything, you may check [this issue](https://github.com/continue-revolution/sd-webui-segment-anything/issues/60) for how to use. For Edit-Anything, this extension has **in-theory** supported, but since they only published diffusers models which probably only work for SD 2.x, I am unable to test at this moment. I will update once they release models in lllyasviel format. I am always open to support any other interesting applications, but I think at this moment, all such applications should have been supported.
+
+Q: Do you plan to continue updating this extension?
+
+A: Yes, but this extension has moved into maintenance phase. I don't think there will be huge updates in the foreseeable future. Despite of this, I will continue to deal with issues, and monitor new research works to see if they are worth supporting. I welcome any community contribution and any feature requests.
+
+Q: I have a job opportunity, are you interested?
+
+A: Yes, please send me an email if you are interested.
+
+Q: I want to sponsor you, how can I do that?
+
+A: Please go to [sponsor](#sponsor) section and scan the corresponding QR code.
+
 
 ## Contribute
 
