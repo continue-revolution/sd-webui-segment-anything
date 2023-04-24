@@ -38,7 +38,7 @@ You should know the following before submitting an issue.
 
 7. If you want to sponsor me, please go to [sponsor](#sponsor) section and scan the corresponding QR code.
 
-## Installment
+## Install
 
 Download this extension to `${sd-webui}/extensions` use whatever way you like (git clone or install from UI)
 
@@ -72,44 +72,62 @@ Automatic Segmentation has been supported in this extension. It has the followin
 
 However, there are some existing problems with AutoSAM:
 1. You are required to install [Mikubill ControlNet Extension](https://github.com/Mikubill/sd-webui-controlnet) to use functionality 1 and 4. Please do not change the directory name (`sd-webui-controlnet`).
-2. [EditAnything](https://github.com/sail-sg/EditAnything) only released SD2.1 diffusers models. Even if they release lllyasviel models, their models might not be compatible with most community-based SD1.5 models.
-3. Image layout generation has a pretty bad performance for anime images. I discourage you from using this functionality if you are dealing with anime images. I'm not sure about the performance for real images.
+2. You can observe drastic improvement if you combine `seg_ufade20k` and SAM. You may only observe some slight improvement if you combine one of the `Oneformer` preprocessors (`seg_ofade20k`&`seg_ofcoco`).
+3. [EditAnything](https://github.com/sail-sg/EditAnything) only released SD2.1 diffusers models. Even if they release lllyasviel models, their models might not be compatible with most community-based SD1.5 models.
+4. Image layout generation has a pretty bad performance for anime images. I discourage you from using this functionality if you are dealing with anime images. I'm not sure about the performance for real images.
 
 ## How to Use
 
 ### Single Image
-- Upload your image
-- Optionally add point prompts on the image. Left click for positive point prompt (black dot), right click for negative point prompt (red dot), left click any dot again to cancel the prompt. You must add point prompt if you do not wish to use GroundingDINO.
-- Optionally check `Enable GroundingDINO`, select GroundingDINO model you want, write text prompt (separate different categories with `.`) and pick a box threshold (I highly recommend the default setting. High threshold may result in no bounding box). You must write text prompt if you do not wish to use point prompts.
-- Optionally enable previewing GroundingDINO bounding box and click `Generate bounding box`. You must write text prompt to preview bounding box. After you see the boxes with number marked on the top-left corner, uncheck all the boxes you do not want. If you uncheck all boxes, you will have to add point prompts to generate masks.
-- Click `Preview Segmentation` button. Due to the limitation of SAM, if there are multiple bounding boxes, your point prompts will not take effect when generating masks.
-- Choose your favorite segmentation.
-- Optionally check `Expand Mask` and specify the amount, then click `Update Mask`.
+1. Upload your image
+2. Optionally add point prompts on the image. Left click for positive point prompt (black dot), right click for negative point prompt (red dot), left click any dot again to cancel the prompt. You must add point prompt if you do not wish to use GroundingDINO.
+3. Optionally check `Enable GroundingDINO`, select GroundingDINO model you want, write text prompt (separate different categories with `.`) and pick a box threshold (I highly recommend the default setting. High threshold may result in no bounding box). You must write text prompt if you do not wish to use point prompts.
+4. Optionally enable previewing GroundingDINO bounding box and click `Generate bounding box`. You must write text prompt to preview bounding box. After you see the boxes with number marked on the top-left corner, uncheck all the boxes you do not want. If you uncheck all boxes, you will have to add point prompts to generate masks.
+5. Click `Preview Segmentation` button. Due to the limitation of SAM, if there are multiple bounding boxes, your point prompts will not take effect when generating masks.
+6. Choose your favorite segmentation.
+7. Optionally check `Expand Mask` and specify the amount, then click `Update Mask`.
 
 #### txt2img
-- You may only copy image and mask to ControlNet inpainting. 
-- Optionally check `ControlNet inpaint not masked` to invert mask colors and inpaint regions outside of the mask.
-- Select the correct ControlNet index where you are using inpainting, if you wish to use Multi-ControlNet. 
+1. You may only copy image and mask to ControlNet inpainting. 
+2. Optionally check `ControlNet inpaint not masked` to invert mask colors and inpaint regions outside of the mask.
+3. Select the correct ControlNet index where you are using inpainting, if you wish to use Multi-ControlNet. 
 
 #### img2img
-- Update your ControlNet (**MUST**) and check `Allow other script to control this extension` on your ControlNet settings.
-- Check `Copy to Inpaint Upload & ControlNet Inpainting`. There is no need to select ControlNet index.
-- Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel.
-- Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompts, configurate A1111 panel and click `Generate`.
+1. Update your ControlNet (**MUST**) and check `Allow other script to control this extension` on your ControlNet settings.
+2. Check `Copy to Inpaint Upload & ControlNet Inpainting`. There is no need to select ControlNet index.
+3. Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel.
+4. Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompts, configurate A1111 panel and click `Generate`.
 
 ### Batch Process
-- Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images.
-- Choose `Output per image` to configurate the number of masks per bounding box. I highly recommend 3, since some masks might be wierd.
-- Click/unclick several checkboxes to configurate the images you want to save. See [demo](#demo) for what type of images these checkboxes represent.
-- Click `Start batch process` and wait. If you see "Done" below this button, you are all set.
+1. Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images.
+2. Choose `Output per image` to configurate the number of masks per bounding box. I highly recommend 3, since some masks might be wierd.
+3. Click/unclick several checkboxes to configurate the images you want to save. See [demo](#demo) for what type of images these checkboxes represent.
+4. Click `Start batch process` and wait. If you see "Done" below this button, you are all set.
 
-### Auto SAM
+### AutoSAM
+
+1. Install and update [Mikubill ControlNet Extension](https://github.com/Mikubill/sd-webui-controlnet) before using it.
+2. Configurate AutoSAM tunnable parameters according to descriptions [here](https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/automatic_mask_generator.py#L35-L96). Use default if you cannot understand.
 
 #### ControlNet
 
+1. Choose preprocessor.
+    - `seg_ufade20k`, `seg_ofade20k` and `seg_ofcoco` are from ControlNet annotators. I highly recommend one of `seg_ofade20k` and `seg_ofcoco` because their performance are far better than `seg_ufade20k`. They are all compatible with control_v11p_sd15_seg. Optionally enable [pixel-perfect](https://github.com/Mikubill/sd-webui-controlnet/issues/924) to automatically pick the best preprocessor resolution. Configure your target width and height on txt2img/img2img default panel before preview if you wish to enable pixel perfect. Otherwise you need to manually set a preprocessor resolution. 
+    - `random` is for [EditAnything](https://github.com/sail-sg/EditAnything). There is no need to set a preprocessor for random preprocessor since it does not contain semantic segmentation, but you need to pick an image from the AutoSeg output gallery to copy to ControlNet. 1 represents random colorization of different mask regions which is reserved for future ControlNet, 2 represents fixed colorization which can be EditAnything ControlNet control image.
+2. Click preview segmentation image. For semantic semgentations, you will see 4 images where the left 2 are without SAM and the right 2 are with SAM. For random preprocessor, you will see 3 images where the top-left is the blended image, the top-right is random colorized masks and the down-left is for EditAnything ControlNet.
+3. Check `Copy to ControlNet Segmentation` and select the correct ControlNet index where you are using ControlNet segmentation models if you wish to use Multi-ControlNet. 
+
 #### Image Layout
 
+1. For single image, simply upload image, enter output path and click generate. You will see a lot of images inside the output directory.
+2. For batch process, simply enter source and destination directories and click generate. You will see a lot of images inside `${destination}/{image_filename}` directory.
+
 #### Mask by Category
+
+1. Choose preprocessor similar to [ControlNet step 1](#controlnet). This is pure semantic segmentation so there is no random preprocessor.
+2. Enter category IDs separated by `+`. Visit [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/oneformer/data/datasets/register_ade20k_panoptic.py#L12-L207) for ade20k and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map. Note that coco jumps some numbers, so the actual ID is line_number - 21. For example, if you want bed+person, your input should be 7+12 for ade20k and 59+0 for coco.
+3. For single image, upload image, click preview and configurate copy similar to [here for txt2img](#txt2img) and [here for img2img](#img2img).
+4. For batch process, it is similar to [Batch process](#batch-process) step 2-4.
 
 ## Demo
 Point prompts demo
@@ -120,7 +138,7 @@ GroundingDINO demo
 
 https://user-images.githubusercontent.com/63914308/232157480-757f6e70-673a-4023-b4ca-df074ed30436.mp4
 
-Batch process image demo
+Batch process demo
 
 ![Configuration Image](https://user-images.githubusercontent.com/63914308/232157562-2f3cc9cc-310c-4b8b-89ba-216d2e014ca2.jpg) 
 
