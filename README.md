@@ -136,7 +136,7 @@ If you have previously enabled other copys while using this extension, you may w
 4. For batch process, it is similar to [Batch process](#batch-process) step 2-4.
 
 ## Demo
-Point prompts demo
+Point prompts demo (also so-called Remove/Fill Anything)
 
 https://user-images.githubusercontent.com/63914308/230916163-af661008-5a50-496e-8b79-8be7f193f9e9.mp4
 
@@ -152,9 +152,9 @@ Semantic segmentation demo
 
 https://user-images.githubusercontent.com/63914308/234080818-0bac3d67-4dfe-4666-b888-4e7d2e3c0cb4.mp4
 
-Mask by Category demo
+Mask by Category demo (also so-called Replace Anything)
 
-TODO
+https://user-images.githubusercontent.com/63914308/234083907-cdb47082-d587-41fc-8da1-324e67e2749a.mp4
 
 Mask by Category batch demo
 
