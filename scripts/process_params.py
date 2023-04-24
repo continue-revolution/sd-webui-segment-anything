@@ -37,10 +37,9 @@ class SAMInpaintUnit:
         self.output_chosen_mask         = args[5]
         self.dilation_checkbox          = args[6]
         self.dilation_output_gallery    = args[7]
-        if self.is_img2img:
-            self.sketch_checkbox        = args[8]
-            self.inpaint_color_sketch   = args[9]
-            self.inpaint_mask_alpha     = args[10]
+        self.sketch_checkbox            = args[8]
+        self.inpaint_color_sketch       = args[9]
+        self.inpaint_mask_alpha         = args[10]
 
 
     def get_input_and_mask(self, mask_blur):
@@ -67,13 +66,8 @@ class SAMInpaintUnit:
 class SAMProcessUnit:
     def __init__(self, args: Tuple, is_img2img=False):
         self.is_img2img = is_img2img
-
-        if is_img2img:
-            sam_inpaint_args = args[:11]
-            args = args[11:]
-        else:
-            sam_inpaint_args = args[:8]
-            args = args[8:]
+        sam_inpaint_args = args[:11]
+        args = args[11:]
         self.sam_inpaint_unit = SAMInpaintUnit(sam_inpaint_args, is_img2img)
         
         self.cnet_seg_output_gallery: List[Dict] = None
@@ -101,7 +95,6 @@ class SAMProcessUnit:
         if inpaint_image is None:
             inpaint_image, inpaint_mask = self.crop_inpaint_unit.get_input_and_mask(inpaint_mask_blur)
             inpaint_cn_num = self.crop_inpaint_unit.cnet_inpaint_idx
-        print(inpaint_image is not None, inpaint_mask is not None)
         if inpaint_image is not None and inpaint_mask is not None:
             if self.is_img2img:
                 p.init_images = [inpaint_image]
@@ -115,7 +108,7 @@ class SAMProcessUnit:
             if len(self.cnet_seg_output_gallery) == 3 and self.cnet_seg_gallery_input is not None:
                 cnet_seg_gallery_index += self.cnet_seg_gallery_input
             self.set_p_value(p, 'control_net_input_image', self.cnet_seg_idx, 
-                             Image.fromarray(self.cnet_seg_output_gallery[1]['name']))
+                             Image.open(self.cnet_seg_output_gallery[1]['name']))
 
 
     def set_p_value(self, p, attr: str, idx: int, v):

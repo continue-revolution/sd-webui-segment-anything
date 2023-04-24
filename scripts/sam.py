@@ -389,19 +389,22 @@ def categorical_mask_batch(
         print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
         try:
             crop_input_image = Image.open(input_image_file).convert("RGB")
-            outputs, resized_input_image = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image, 
-                                                                  crop_pixel_perfect, crop_resize_mode, target_W, targe_H)
-            if isinstance(outputs, str):
-                outputs = f"Image {image_index}: {outputs}"
-                print(outputs)
-                process_info += outputs + "\n"
-                continue
-            create_mask_batch_output(
-                input_image_file, crop_batch_dest_dir, 
-                resized_input_image, outputs[None, None, ...], None, crop_batch_dilation_amt, 
-                crop_batch_save_image, crop_batch_save_mask, crop_batch_save_background, crop_batch_save_image_with_mask)
         except:
             print(f"File {input_image_file} not image, skipped.")
+            continue
+        outputs, resized_input_image = categorical_mask_image(crop_processor, crop_processor_res, crop_category_input, crop_input_image, 
+                                                              crop_pixel_perfect, crop_resize_mode, target_W, targe_H)
+        if isinstance(outputs, str):
+            outputs = f"Image {image_index}: {outputs}"
+            print(outputs)
+            process_info += outputs + "\n"
+            continue
+        resized_input_image_pil = Image.fromarray(resized_input_image).convert("RGBA")
+        resized_input_image_np = np.array(resized_input_image_pil)
+        create_mask_batch_output(
+            input_image_file, crop_batch_dest_dir, 
+            resized_input_image_np, outputs[None, None, ...], None, crop_batch_dilation_amt, 
+            crop_batch_save_image, crop_batch_save_mask, crop_batch_save_background, crop_batch_save_image_with_mask)
     sem_sam_garbage_collect()
     garbage_collect(sam)
     return outputs
@@ -435,20 +438,21 @@ def ui_sketch_inner():
     return sam_inpaint_color_sketch, sam_inpaint_mask_alpha    
 
 
-def ui_sketch(sam_input_image):
-    sam_sketch_checkbox = gr.Checkbox(value=False, label="Enable Sketch")
-    with gr.Column(visible=False) as sketch_column:
-        sam_inpaint_copy_button = gr.Button(value="Copy from input image")
-        sam_inpaint_color_sketch, sam_inpaint_mask_alpha = ui_sketch_inner()
-    sam_inpaint_copy_button.click(
-            fn=lambda x: x,
-            inputs=[sam_input_image],
-            outputs=[sam_inpaint_color_sketch])
-    sam_sketch_checkbox.change(
-        fn=gr_show,
-        inputs=[sam_sketch_checkbox],
-        outputs=[sketch_column],
-        show_progress=False)
+def ui_sketch(sam_input_image, is_img2img):
+    with gr.Column(visible=is_img2img):
+        sam_sketch_checkbox = gr.Checkbox(value=False, label="Enable Sketch")
+        with gr.Column(visible=False) as sketch_column:
+            sam_inpaint_copy_button = gr.Button(value="Copy from input image")
+            sam_inpaint_color_sketch, sam_inpaint_mask_alpha = ui_sketch_inner()
+        sam_inpaint_copy_button.click(
+                fn=lambda x: x,
+                inputs=[sam_input_image],
+                outputs=[sam_inpaint_color_sketch])
+        sam_sketch_checkbox.change(
+            fn=gr_show,
+            inputs=[sam_sketch_checkbox],
+            outputs=[sketch_column],
+            show_progress=False)
     return sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_alpha
 
 def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image):
@@ -604,8 +608,8 @@ class Script(scripts.Script):
                         sam_inpaint_upload_enable, sam_cnet_inpaint_invert, sam_cnet_inpaint_idx,
                         sam_input_image, sam_output_mask_gallery, sam_output_chosen_mask, 
                         sam_dilation_checkbox, sam_dilation_output_gallery)
-                    if is_img2img:
-                        sam_single_image_process += ui_sketch(sam_input_image)
+                    sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_alpha = ui_sketch(sam_input_image, is_img2img)
+                    sam_single_image_process += (sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_alpha)
                     ui_process += sam_single_image_process
 
                 with gr.TabItem(label="Batch Process"):
@@ -695,7 +699,7 @@ class Script(scripts.Script):
                             gr.Markdown(
                                 "You can mask images by their categories via semantic segmentation. Please enter category ids (integers), separated by `+`. "
                                 "Visit [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/oneformer/data/datasets/register_ade20k_panoptic.py#L12-L207) for ade20k "
-                                "and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map. Note that coco jumps some numbers, to the actual ID is line_number-21.")
+                                "and [here](https://github.com/Mikubill/sd-webui-controlnet/blob/main/annotator/oneformer/detectron2/data/datasets/builtin_meta.py#L20-L153) for coco to get category->id map. Note that coco jumps some numbers, so the actual ID is line_number - 21.")
                             crop_processor, crop_processor_res, _, crop_pixel_perfect, crop_resize_mode = ui_processor(False)
                             crop_category_input = gr.Textbox(placeholder="Enter categody ids, separated by +. For example, if you want bed+person, your input should be 7+12 for ade20k and 59+0 for coco.", label="Enter category IDs")
                             with gr.Tabs():
@@ -716,10 +720,10 @@ class Script(scripts.Script):
                                     crop_dilation_checkbox, crop_dilation_output_gallery = ui_dilation(crop_output_gallery, crop_padding, crop_resized_image)
                                     crop_single_image_process = (
                                         crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx, 
-                                        crop_input_image, crop_output_gallery, crop_padding, 
+                                        crop_resized_image, crop_output_gallery, crop_padding, 
                                         crop_dilation_checkbox, crop_dilation_output_gallery)
-                                    if is_img2img:
-                                        crop_single_image_process += ui_sketch(sam_input_image)
+                                    crop_sketch_checkbox, crop_inpaint_color_sketch, crop_inpaint_mask_alpha = ui_sketch(crop_resized_image, is_img2img)
+                                    crop_single_image_process += (crop_sketch_checkbox, crop_inpaint_color_sketch, crop_inpaint_mask_alpha)
                                     ui_process += crop_single_image_process
 
                                 with gr.TabItem(label="Batch Process"):
@@ -735,6 +739,7 @@ class Script(scripts.Script):
                 with gr.Row():
                     switch = gr.Button(value="Switch to Inpaint Upload")
                     unload = gr.Button(value="Unload all models from memory")
+                    uncheck = gr.Button(value="Uncheck all copies")
                     switch.click(
                         fn=lambda _: None,
                         _js="switchToInpaintUpload",
@@ -744,6 +749,11 @@ class Script(scripts.Script):
                         fn=clear_cache,
                         inputs=[],
                         outputs=[])
+                    uncheck.click(
+                        fn=lambda _: (gr.update(value=False), gr.update(value=False), gr.update(value=False)),
+                        inputs=None,
+                        outputs=[sam_inpaint_upload_enable, cnet_seg_enable_copy, crop_inpaint_enable],
+                        show_progress=False)
         
         return ui_process
 

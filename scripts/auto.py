@@ -117,9 +117,12 @@ def image_layer_internal(layout_input_image_or_path, layout_output_path):
             try:
                 input_image = Image.open(input_image_file)
                 output_directory = os.path.join(layout_output_path, os.path.splitext(os.path.basename(input_image_file))[0])
-                image_layer_image(input_image, output_directory)
+                from pathlib import Path
+                Path(output_directory).mkdir(exist_ok=True)
             except:
                 print(f"File {input_image_file} not image, skipped.")
+                continue
+            image_layer_image(input_image, output_directory)
     else:
         image_layer_image(layout_input_image_or_path, layout_output_path)
     return "Done"
