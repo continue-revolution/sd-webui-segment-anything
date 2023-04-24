@@ -407,7 +407,7 @@ def categorical_mask_batch(
             crop_batch_save_image, crop_batch_save_mask, crop_batch_save_background, crop_batch_save_image_with_mask)
     sem_sam_garbage_collect()
     garbage_collect(sam)
-    return outputs
+    return process_info + "Done"
 
 
 def priorize_sam_scripts(is_img2img):
@@ -439,7 +439,7 @@ def ui_sketch_inner():
 
 
 def ui_sketch(sam_input_image, is_img2img):
-    with gr.Column(visible=is_img2img):
+    with gr.Column(visible=False):
         sam_sketch_checkbox = gr.Checkbox(value=False, label="Enable Sketch")
         with gr.Column(visible=False) as sketch_column:
             sam_inpaint_copy_button = gr.Button(value="Copy from input image")
