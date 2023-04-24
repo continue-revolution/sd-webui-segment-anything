@@ -162,7 +162,11 @@ https://user-images.githubusercontent.com/63914308/234083907-cdb47082-d587-41fc-
 
 Mask by Category batch demo
 
-TODO
+![image](https://user-images.githubusercontent.com/63914308/234085307-462efd10-465b-488e-91b8-b75e5f814a47.png)
+
+| Input Image | Output Image | Output Mask | Output Blend |
+| --- | --- | --- | --- |
+| ![1NHa6Wc](https://user-images.githubusercontent.com/63914308/234085498-70ca1d4c-cc5a-44d4-adb2-366630e5ce24.png) | ![1NHa6Wc_0_output](https://user-images.githubusercontent.com/63914308/234085495-0bfc4114-3e81-4ace-81d6-0f0f3186df25.png) | ![1NHa6Wc_0_mask](https://user-images.githubusercontent.com/63914308/234085491-8976f46c-2617-47ee-968e-0a9dd479c63a.png) | ![1NHa6Wc_0_blend](https://user-images.githubusercontent.com/63914308/234085503-7e041373-39cd-4f20-8696-986be517f188.png)
 
 ## API Support
 
