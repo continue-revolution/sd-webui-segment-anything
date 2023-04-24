@@ -24,7 +24,7 @@ There are already at least two great tutorials on how to use this extension. Che
 
 You should know the following before submitting an issue.
 
-1. This extension has moved into maintenance phase. I don't think there will be huge updates in the foreseeable future. Despite of this, I will continue to deal with issues, and monitor new research works to see if they are worth supporting. I welcome any community contribution and any feature requests.
+1. This extension has almost moved into maintenance phase. Although I don't think there will be huge updates in the foreseeable future, Mikubill ControlNet Extension is still fast developing, and I'm looking forward to more opportunities to connect my extension to ControlNet. Despite of this, I will continue to deal with issues, and monitor new research works to see if they are worth supporting. I welcome any community contribution and any feature requests.
 
 2. You must use gradio>=3.23.0 and WebUI>=`22bcc7be` to use this extension. A1111 WebUI is stable, and some integrated package authors have also updated their packages (for example, if you are using the package from [@Akegarasu](https://github.com/Akegarasu), i.e. 秋叶整合包, it has already been updated according to [this video](https://www.bilibili.com/video/BV1iM4y1y7oA)). Also, supporting different versions of WebUI will be a huge time commitment, during which I can create many more features. Please update your WebUI and it is safe to use. I'm not planning to support some old commits of WebUI, such as `a9fed7c3`.
 
@@ -93,6 +93,8 @@ If you have previously enabled other copys while using this extension, you may w
 1. You may only copy image and mask to ControlNet inpainting. 
 2. Optionally check `ControlNet inpaint not masked` to invert mask colors and inpaint regions outside of the mask.
 3. Select the correct ControlNet index where you are using inpainting, if you wish to use Multi-ControlNet. 
+4. Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel.
+5. Write your prompts, configurate A1111 panel and click `Generate`.
 
 #### img2img
 1. Update your ControlNet (**MUST**) and check `Allow other script to control this extension` on your ControlNet settings.
@@ -114,10 +116,12 @@ If you have previously enabled other copys while using this extension, you may w
 #### ControlNet
 
 1. Choose preprocessor.
-    - `seg_ufade20k`, `seg_ofade20k` and `seg_ofcoco` are from ControlNet annotators. I highly recommend one of `seg_ofade20k` and `seg_ofcoco` because their performance are far better than `seg_ufade20k`. They are all compatible with control_v11p_sd15_seg. Optionally enable [pixel-perfect](https://github.com/Mikubill/sd-webui-controlnet/issues/924) to automatically pick the best preprocessor resolution. Configure your target width and height on txt2img/img2img default panel before preview if you wish to enable pixel perfect. Otherwise you need to manually set a preprocessor resolution. 
+    - `seg_ufade20k`, `seg_ofade20k` and `seg_ofcoco` are from ControlNet annotators. I highly recommend one of `seg_ofade20k` and `seg_ofcoco` because their performance are far better than `seg_ufade20k`. They are all compatible with `control_v11p_sd15_seg`. Optionally enable [pixel-perfect](https://github.com/Mikubill/sd-webui-controlnet/issues/924) to automatically pick the best preprocessor resolution. Configure your target width and height on txt2img/img2img default panel before preview if you wish to enable pixel perfect. Otherwise you need to manually set a preprocessor resolution. 
     - `random` is for [EditAnything](https://github.com/sail-sg/EditAnything). There is no need to set a preprocessor for random preprocessor since it does not contain semantic segmentation, but you need to pick an image from the AutoSeg output gallery to copy to ControlNet. 1 represents random colorization of different mask regions which is reserved for future ControlNet, 2 represents fixed colorization which can be EditAnything ControlNet control image.
 2. Click preview segmentation image. For semantic semgentations, you will see 4 images where the left 2 are without SAM and the right 2 are with SAM. For random preprocessor, you will see 3 images where the top-left is the blended image, the top-right is random colorized masks and the down-left is for EditAnything ControlNet.
-3. Check `Copy to ControlNet Segmentation` and select the correct ControlNet index where you are using ControlNet segmentation models if you wish to use Multi-ControlNet. 
+3. Check `Copy to ControlNet Segmentation` and select the correct ControlNet index where you are using ControlNet segmentation models if you wish to use Multi-ControlNet.
+4. Configurate ControlNet panel. Click `Enable`, preprocessor choose `none`, model choose `control_v11p_sd15_seg [e1f51eb9]`. There is no need to upload image to the ControlNet segmentation panel.
+5. Write your prompts, configurate A1111 panel and click `Generate`.
 
 #### Image Layout
 
