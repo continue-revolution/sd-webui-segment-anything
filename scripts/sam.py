@@ -608,8 +608,6 @@ class Script(scripts.Script):
                         sam_inpaint_upload_enable, sam_cnet_inpaint_invert, sam_cnet_inpaint_idx,
                         sam_input_image, sam_output_mask_gallery, sam_output_chosen_mask, 
                         sam_dilation_checkbox, sam_dilation_output_gallery)
-                    sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_alpha = ui_sketch(sam_input_image, is_img2img)
-                    sam_single_image_process += (sam_sketch_checkbox, sam_inpaint_color_sketch, sam_inpaint_mask_alpha)
                     ui_process += sam_single_image_process
 
                 with gr.TabItem(label="Batch Process"):
@@ -722,8 +720,6 @@ class Script(scripts.Script):
                                         crop_inpaint_enable, crop_cnet_inpaint_invert, crop_cnet_inpaint_idx, 
                                         crop_resized_image, crop_output_gallery, crop_padding, 
                                         crop_dilation_checkbox, crop_dilation_output_gallery)
-                                    crop_sketch_checkbox, crop_inpaint_color_sketch, crop_inpaint_mask_alpha = ui_sketch(crop_resized_image, is_img2img)
-                                    crop_single_image_process += (crop_sketch_checkbox, crop_inpaint_color_sketch, crop_inpaint_mask_alpha)
                                     ui_process += crop_single_image_process
 
                                 with gr.TabItem(label="Batch Process"):

@@ -18,6 +18,13 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 
 This extension has been significantly refactored on `2023/04/24`. If you wish to revert to older version, please `git checkout 724b4db`.
 
+## TODO
+
+- [ ] Color selection for mask region and unmask region
+- [ ] Batch ControlNet inpainting
+- [ ] What does "Masked content" mean?
+- [ ] Test EditAnything
+
 ## FAQ
 
 Thanks for suggestions from [github issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
