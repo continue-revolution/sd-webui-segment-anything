@@ -22,6 +22,7 @@ This extension has been significantly refactored on `2023/04/24`. If you wish to
 
 - [ ] Color selection for mask region and unmask region
 - [ ] Batch ControlNet inpainting
+- [ ] Only upload mask (Add content to image)
 - [ ] What does "Masked content" mean?
 - [ ] Test EditAnything
 
