@@ -56,7 +56,10 @@ def show_masks(image_np, masks: np.ndarray, alpha=0.5):
 
 def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     print("Dilation Amount: ", dilation_amt)
-    mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
+    if isinstance(mask_gallery, dict):
+        mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
+    else:
+        mask_image = mask_gallery
     binary_img = np.array(mask_image.convert('1'))
     if dilation_amt:
         mask_image, binary_img = dilate_mask(binary_img, dilation_amt)
@@ -135,18 +138,17 @@ def dilate_mask(mask, dilation_amt):
     return dilated_mask, dilated_binary_img
 
 
-def create_mask_output(image_np, masks, boxes_filt, gui):
+def create_mask_output(image_np, masks, boxes_filt):
     print("Creating output image")
     mask_images, masks_gallery, matted_images = [], [], []
     boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
     for mask in masks:
         masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
-        if gui:
-            blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
-            mask_images.append(Image.fromarray(blended_image))
-            image_np_copy = copy.deepcopy(image_np)
-            image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
-            matted_images.append(Image.fromarray(image_np_copy))
+        blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
+        mask_images.append(Image.fromarray(blended_image))
+        image_np_copy = copy.deepcopy(image_np)
+        image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+        matted_images.append(Image.fromarray(image_np_copy))
     return mask_images + masks_gallery + matted_images
 
 
@@ -179,7 +181,7 @@ def create_mask_batch_output(
 
 def sam_predict(sam_model_name, input_image, positive_points, negative_points,
                 dino_checkbox, dino_model_name, text_prompt, box_threshold,
-                dino_preview_checkbox, dino_preview_boxes_selection, gui=True):
+                dino_preview_checkbox, dino_preview_boxes_selection):
     print("Start SAM Processing")
     if sam_model_name is None:
         return [], "SAM model not found. Please download SAM model from extension README."
@@ -234,7 +236,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             multimask_output=True)
         masks = masks[:, None, ...]
     garbage_collect(sam)
-    return create_mask_output(image_np, masks, boxes_filt, gui), sam_predict_status + sam_predict_result
+    return create_mask_output(image_np, masks, boxes_filt), sam_predict_status + sam_predict_result
 
 
 def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
@@ -364,7 +366,7 @@ def categorical_mask(
     garbage_collect(sam)
     if isinstance(outputs, str):
         return [], outputs, None
-    output_gallery = create_mask_output(resized_input_image_np, outputs[None, None, ...], None, True)
+    output_gallery = create_mask_output(resized_input_image_np, outputs[None, None, ...], None)
     return output_gallery, "Done", resized_input_image_pil
 
 

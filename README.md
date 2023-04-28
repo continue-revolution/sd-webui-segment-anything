@@ -15,6 +15,7 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
     - Image layout generation (single image + batch process)
     - *Image masking with categories (single image + batch process)
     - *Inpaint not masked for ControlNet inpainting on txt2img panel
+- `2023/04/29`: [Feature] API has been completely refactored. You can access all features for **single image process** through API. API documentation has been moved to [wiki](https://github.com/continue-revolution/sd-webui-segment-anything/wiki/API).
 
 This extension has been significantly refactored on `2023/04/24`. If you wish to revert to older version, please `git checkout 724b4db`.
 
@@ -23,7 +24,7 @@ This extension has been significantly refactored on `2023/04/24`. If you wish to
 - [ ] Color selection for mask region and unmask region
 - [ ] Batch ControlNet inpainting
 - [ ] Only upload mask (Add content to image)
-- [ ] What does "Masked content" mean?
+- [ ] "Masked content"
 - [ ] Test EditAnything
 
 ## FAQ
@@ -186,7 +187,7 @@ We have added an API endpoint to allow for automated workflows.
 
 The API utilizes both Segment Anything and GroundingDINO to return masks of all instances of whatever object is specified in the text prompt.
 
-This is an extension of the existing [Stable Diffusion Web UI API](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API).
+This is an extension of the existing [Stable Diffusion WebUI API](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API).
 
 There are 2 endpoints exposed
 - GET `/sam-webui/heartbeat`
