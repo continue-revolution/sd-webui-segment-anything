@@ -22,9 +22,6 @@ class SAMInpaintUnit:
         self.output_chosen_mask: int = 0
         self.dilation_checkbox: bool = False
         self.dilation_output_gallery: List[Dict] = None
-        self.sketch_checkbox: bool = False
-        self.inpaint_color_sketch = None
-        self.inpaint_mask_alpha: int = 0
         self.init_sam_single_image_process(args)
 
     
@@ -37,9 +34,6 @@ class SAMInpaintUnit:
         self.output_chosen_mask         = args[5]
         self.dilation_checkbox          = args[6]
         self.dilation_output_gallery    = args[7]
-        self.sketch_checkbox            = args[8]
-        self.inpaint_color_sketch       = args[9]
-        self.inpaint_mask_alpha         = args[10]
 
 
     def get_input_and_mask(self, mask_blur):
@@ -51,14 +45,14 @@ class SAMInpaintUnit:
                 mask = Image.open(self.output_mask_gallery[self.output_chosen_mask + 3]['name']).convert('L')
             if mask is not None and self.cnet_inpaint_invert:
                 mask = ImageOps.invert(mask)
-            if self.is_img2img and self.sketch_checkbox and self.inpaint_color_sketch is not None and mask is not None:
-                alpha = np.expand_dims(np.array(mask) / 255, axis=-1)
-                image = np.uint8(np.array(self.inpaint_color_sketch) * alpha + np.array(self.input_image) * (1 - alpha))
-                mask = ImageEnhance.Brightness(mask).enhance(1 - self.inpaint_mask_alpha / 100)
-                blur = ImageFilter.GaussianBlur(mask_blur)
-                image = Image.composite(image.filter(blur), self.input_image, mask.filter(blur)).convert("RGB")
-            else:
-                image = self.input_image
+            # if self.is_img2img and self.sketch_checkbox and self.inpaint_color_sketch is not None and mask is not None:
+            #     alpha = np.expand_dims(np.array(mask) / 255, axis=-1)
+            #     image = np.uint8(np.array(self.inpaint_color_sketch) * alpha + np.array(self.input_image) * (1 - alpha))
+            #     mask = ImageEnhance.Brightness(mask).enhance(1 - self.inpaint_mask_alpha / 100)
+            #     blur = ImageFilter.GaussianBlur(mask_blur)
+            #     image = Image.composite(image.filter(blur), self.input_image, mask.filter(blur)).convert("RGB")
+            # else:
+            image = self.input_image
         return image, mask
 
 
@@ -66,8 +60,8 @@ class SAMInpaintUnit:
 class SAMProcessUnit:
     def __init__(self, args: Tuple, is_img2img=False):
         self.is_img2img = is_img2img
-        sam_inpaint_args = args[:11]
-        args = args[11:]
+        sam_inpaint_args = args[:8]
+        args = args[8:]
         self.sam_inpaint_unit = SAMInpaintUnit(sam_inpaint_args, is_img2img)
         
         self.cnet_seg_output_gallery: List[Dict] = None

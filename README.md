@@ -15,8 +15,17 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
     - Image layout generation (single image + batch process)
     - *Image masking with categories (single image + batch process)
     - *Inpaint not masked for ControlNet inpainting on txt2img panel
+- `2023/04/29`: [Feature] API has been completely refactored. You can access all features for **single image process** through API. API documentation has been moved to [wiki](https://github.com/continue-revolution/sd-webui-segment-anything/wiki/API).
 
 This extension has been significantly refactored on `2023/04/24`. If you wish to revert to older version, please `git checkout 724b4db`.
+
+## TODO
+
+- [ ] Color selection for mask region and unmask region
+- [ ] Batch ControlNet inpainting
+- [ ] Only upload mask (Add content to image)
+- [ ] "Masked content"
+- [ ] Test EditAnything
 
 ## FAQ
 
@@ -169,55 +178,6 @@ Mask by Category batch demo
 | Input Image | Output Image | Output Mask | Output Blend |
 | --- | --- | --- | --- |
 | ![1NHa6Wc](https://user-images.githubusercontent.com/63914308/234085498-70ca1d4c-cc5a-44d4-adb2-366630e5ce24.png) | ![1NHa6Wc_0_output](https://user-images.githubusercontent.com/63914308/234085495-0bfc4114-3e81-4ace-81d6-0f0f3186df25.png) | ![1NHa6Wc_0_mask](https://user-images.githubusercontent.com/63914308/234085491-8976f46c-2617-47ee-968e-0a9dd479c63a.png) | ![1NHa6Wc_0_blend](https://user-images.githubusercontent.com/63914308/234085503-7e041373-39cd-4f20-8696-986be517f188.png)
-
-## API Support
-
-### API Usage
-
-We have added an API endpoint to allow for automated workflows.
-
-The API utilizes both Segment Anything and GroundingDINO to return masks of all instances of whatever object is specified in the text prompt.
-
-This is an extension of the existing [Stable Diffusion Web UI API](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API).
-
-There are 2 endpoints exposed
-- GET `/sam-webui/heartbeat`
-- POST `/sam-webui/image-mask`
-
-The heartbeat endpoint can be used to ensure that the API is up.
-
-The image-mask endpoint accepts a payload that includes your base64-encoded image.
-
-Below is an example of how to interface with the API using requests.
-
-### API Example
-
-```
-import base64
-import requests
-from PIL import Image
-from io import BytesIO
-
-url = "http://127.0.0.1:7860/sam-webui/image-mask"
-
-def image_to_base64(img_path: str) -> str:
-    with open(img_path, "rb") as img_file:
-        img_base64 = base64.b64encode(img_file.read()).decode()
-    return img_base64
-
-payload = {
-    "image": image_to_base64("IMAGE_FILE_PATH"),
-    "prompt": "TEXT PROMPT",
-    "box_threshold": 0.3,
-    "padding": 30 #Optional param to pad masks
-}
-res = requests.post(url, json=payload)
-
-for dct in res.json():
-    image_data = base64.b64decode(dct['image'])
-    image = Image.open(BytesIO(image_data))
-    image.show()
-```
 
 ## Contribute
 
