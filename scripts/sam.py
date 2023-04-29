@@ -56,7 +56,7 @@ def show_masks(image_np, masks: np.ndarray, alpha=0.5):
 
 def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     print("Dilation Amount: ", dilation_amt)
-    if isinstance(mask_gallery, dict):
+    if isinstance(mask_gallery, list):
         mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
     else:
         mask_image = mask_gallery
