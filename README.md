@@ -21,12 +21,11 @@ This extension has been significantly refactored on `2023/04/24`. If you wish to
 
 ## TODO
 
+- [ ] Test EditAnything
 - [ ] Color selection for mask region and unmask region
 - [ ] Option to crop mask and separate images according to bounding boxes
-- [ ] Test EditAnything
 - [ ] Support `Resize by` in img2img panel
 - [ ] Batch ControlNet inpainting
-- [ ] "Masked content"
 
 ## FAQ
 
