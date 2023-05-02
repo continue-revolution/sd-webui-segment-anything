@@ -22,10 +22,10 @@ This extension has been significantly refactored on `2023/04/24`. If you wish to
 ## TODO
 
 - [ ] Color selection for mask region and unmask region
-- [ ] Batch ControlNet inpainting
-- [ ] Only upload mask (Add content to image)
-- [ ] "Masked content"
+- [ ] Option to crop mask and separate images according to bounding boxes
 - [ ] Test EditAnything
+- [ ] Batch ControlNet inpainting
+- [ ] "Masked content"
 
 ## FAQ
 
