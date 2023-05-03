@@ -11,7 +11,7 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 - `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! You can copy SAM generated masks to ControlNet to do inpainting. Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to use it. ControlNet inpainting has far better performance compared to general-purposed models, and you do not need to download inpainting-specific models anymore.
 - `2023/04/24`: [Feature] Automatic segmentation support released! Functionalities with * require you to have [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) installed. This update includes support for 
     - *[ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) semantic segmentation
-    - [Edit-Anything](https://github.com/sail-sg/EditAnything) un-semantic segmentation (Not tested)
+    - [EditAnything](https://github.com/sail-sg/EditAnything) un-semantic segmentation (Not tested)
     - Image layout generation (single image + batch process)
     - *Image masking with categories (single image + batch process)
     - *Inpaint not masked for ControlNet inpainting on txt2img panel
@@ -43,7 +43,7 @@ You should know the following before submitting an issue.
 
 4. It is impossible to support [color inpainting](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22) at this moment, because gradio wierdly enlarge the input image which slows down your browser, or even freeze your page. I have already implemented this feature, though, but I made it invisible. Note that ControlNet v1.1 inpainting model is very strong, and you do not need to rely on the traditional inpainting anymore. ControlNet v1.1 does not support color inpainting.
 
-5. [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything) and [Edit-Anything](https://github.com/sail-sg/EditAnything) and A LOT of other popular SAM extensions have been supported. For Inpaint-Anything, you may check [this issue](https://github.com/continue-revolution/sd-webui-segment-anything/issues/60) for how to use. For Edit-Anything, this extension has **in-theory** supported, but since they only published diffusers models which probably only work for SD 2.x + [diffusers package](https://github.com/huggingface/diffusers), I am unable to test at this moment. I will update once they release models in lllyasviel format. I am always open to support any other interesting applications, submit a feature request if you find another interesting one.
+5. [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything) and [EditAnything](https://github.com/sail-sg/EditAnything) and A LOT of other popular SAM extensions have been supported. For Inpaint-Anything, you may check [this issue](https://github.com/continue-revolution/sd-webui-segment-anything/issues/60) for how to use. For EditAnything, this extension has **in-theory** supported, but since they only published diffusers models which probably only work for SD 2.x + [diffusers package](https://github.com/huggingface/diffusers), I am unable to test at this moment. I will update once they release models in lllyasviel format. I am always open to support any other interesting applications, submit a feature request if you find another interesting one.
 
 6. If you have a job opportunity and think I am a good fit, please feel free to send me an email.
 

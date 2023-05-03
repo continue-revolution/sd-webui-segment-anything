@@ -102,7 +102,7 @@ class SAMProcessUnit:
             if len(self.cnet_seg_output_gallery) == 3 and self.cnet_seg_gallery_input is not None:
                 cnet_seg_gallery_index += self.cnet_seg_gallery_input
             self.set_p_value(p, 'control_net_input_image', self.cnet_seg_idx, 
-                             Image.open(self.cnet_seg_output_gallery[1]['name']))
+                             Image.open(self.cnet_seg_output_gallery[cnet_seg_gallery_index]['name']))
 
 
     def set_p_value(self, p, attr: str, idx: int, v):

@@ -297,7 +297,5 @@ def pixel_perfect_lllyasviel(input_image, processor_res, use_pixel_perfect, resi
         print(f'target_H = {target_H}')
         print(f'target_W = {target_W}')
         print(f'estimation = {estimation}')
-    elif processor_res <= 64:
-        preprocessor_resolution = 512
     print(f'preprocessor resolution = {preprocessor_resolution}')
     return preprocessor_resolution
