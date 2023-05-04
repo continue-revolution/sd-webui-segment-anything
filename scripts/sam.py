@@ -491,15 +491,15 @@ def ui_batch(is_dino):
     dino_batch_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)")
     dino_batch_source_dir = gr.Textbox(label="Source directory")
     dino_batch_dest_dir = gr.Textbox(label="Destination directory")
-    with gr.Row():
-        dino_batch_output_per_image = gr.Radio(choices=["1", "3"], value="3", type="index", label="Output per image: ", visible=is_dino)
-        dino_batch_save_image = gr.Checkbox(value=True, label="Save masked image")
-        dino_batch_save_mask = gr.Checkbox(value=True, label="Save mask")
-        dino_batch_save_image_with_mask = gr.Checkbox(value=True, label="Save original image with mask and bounding box")
-        dino_batch_save_background = gr.Checkbox(value=False, label="Save background instead of foreground")
+    with gr.Row(): # TODO: Implement in backend
+        dino_batch_output_per_image = gr.Radio(choices=["1", "3"], value="3", type="index", label="Mask per image", visible=is_dino)
+        dino_batch_save_image = gr.CheckboxGroup(value="Masked image", label="Choose output to save", choices=["Masked image", "Not masked"], type="index")
+        dino_batch_save_mask = gr.CheckboxGroup(value="Mask", label="Choose mask to save", choices=["Mask", "Inverted mask"], type="index")
+        dino_batch_save_blended = gr.Checkbox(value=True, label="Save blended image")
+        dino_batch_separate_box = gr.Checkbox(value=False, label=("Separate different " + ("bounding boxes" if is_dino else "categories")))
     dino_batch_run_button = gr.Button(value="Start batch process")
-    dino_batch_progress = gr.Text(value="", label="GroundingDINO batch progress status")
-    return dino_batch_dilation_amt, dino_batch_source_dir, dino_batch_dest_dir, dino_batch_output_per_image, dino_batch_save_image, dino_batch_save_mask, dino_batch_save_image_with_mask, dino_batch_save_background, dino_batch_run_button, dino_batch_progress
+    dino_batch_progress = gr.Text(value="", label="Batch progress status")
+    return dino_batch_dilation_amt, dino_batch_source_dir, dino_batch_dest_dir, dino_batch_output_per_image, dino_batch_save_image, dino_batch_save_mask, dino_batch_save_blended, dino_batch_separate_box, dino_batch_run_button, dino_batch_progress
 
 
 def ui_processor(use_random=True, use_cnet=True):
@@ -507,9 +507,9 @@ def ui_processor(use_random=True, use_cnet=True):
     if use_random:
         processor_choices.append("random")
     with gr.Row():
-        cnet_seg_processor = gr.Radio(choices=processor_choices, value="seg_ufade20k", label="Choose preprocessor for semantic segmentation: ")
-        cnet_seg_processor_res = gr.Slider(label="Preprocessor resolution", value=512, minimum=64, maximum=2048, step=1)
-        cnet_seg_resize_mode = gr.Radio(choices=["Just Resize", "Crop and Resize", "Resize and Fill"], value="Crop and Resize", label="Resize Mode", type="index", visible=False)
+        cnet_seg_processor = gr.Radio(choices=processor_choices, value="seg_ofade20k", label="Choose preprocessor for semantic segmentation")
+        cnet_seg_processor_res = gr.Slider(label="Preprocessor resolution", value=512, minimum=64, maximum=2048, step=1, visible=False)
+        cnet_seg_resize_mode = gr.Radio(choices=["Just Resize", "Crop and Resize", "Resize and Fill"], value="Crop and Resize", label="Resize Mode", type="index")
         if use_random and use_cnet:
             cnet_seg_gallery_input = gr.Radio(
                 choices=["1", "2"], value="2", type="index", visible=False, 
@@ -517,7 +517,7 @@ def ui_processor(use_random=True, use_cnet=True):
         else:
             cnet_seg_gallery_input = gr.Label(visible=False)
     with gr.Row():
-        cnet_seg_pixel_perfect = gr.Checkbox(value=False, label="Enable Pixel Perfect from lllyasviel. "
+        cnet_seg_pixel_perfect = gr.Checkbox(value=True, label="Enable Pixel Perfect from lllyasviel. "
                                              "Configure your target width and height on txt2img/img2img default panel before preview if you wish to enable pixel perfect.")
         if use_random and use_cnet:
             cnet_seg_processor.change(
@@ -551,9 +551,16 @@ class Script(scripts.Script):
                 sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
                 sam_refresh_models = ToolButton(value=refresh_symbol)
                 sam_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+            with gr.Accordion("Mask color/crop setting", open=False):
+                with gr.Row(): # TODO: Implement in backend
+                    sam_unmask_checkbox = gr.Checkbox(label="Change masked color", value=False)
+                    sam_unmask_color = gr.ColorPicker(label="Masked color", value="#000000", interactive=True)
+                    sam_mask_color_checkbox = gr.Checkbox(label="Change not masked color", value=False)
+                    sam_mask_color = gr.ColorPicker(label="Not masked color", value="#ffffff", interactive=True)
+                    sam_crop_mask_checkbox = gr.Radio(label="Mask crop option", choices=["No crop", "Mask", "Bounding box (fall back to mask if no bounding box)"], value="No crop", type="index")
             with gr.Tabs():
                 with gr.TabItem(label="Single Image"):
-                    gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")
+                    gr.Markdown(value="Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.")
                     sam_input_image = gr.Image(label="Image for Segment Anything", elem_id=f"{tab_prefix}input_image", source="upload", type="pil", image_mode="RGBA")
                     sam_remove_dots = gr.Button(value="Remove all point prompts")
                     sam_dummy_component = gr.Label(visible=False)
@@ -562,8 +569,7 @@ class Script(scripts.Script):
                         _js="samRemoveDots",
                         inputs=[sam_dummy_component],
                         outputs=None)
-                    gr.HTML(value="<p>GroundingDINO + Segment Anything can achieve [text prompt]->[object detection]->[segmentation]</p>")
-                    dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO", elem_id=f"{tab_prefix}dino_enable_checkbox")
+                    dino_checkbox = gr.Checkbox(value=False, label="Enable GroundingDINO to achieve [text prompt]->[object detection]->[segmentation]", elem_id=f"{tab_prefix}dino_enable_checkbox")
                     with gr.Column(visible=False) as dino_column:
                         gr.HTML(value="<p>Due to the limitation of Segment Anything, when there are point prompts, at most 1 box prompt will be allowed; when there are multiple box prompts, no point prompts are allowed.</p>")
                         dino_model_name = gr.Dropdown(label="GroundingDINO Model (Auto download from huggingface)", choices=dino_model_list, value=dino_model_list[0])
@@ -628,7 +634,6 @@ class Script(scripts.Script):
                     
                 with gr.TabItem(label="Auto SAM"):
                     gr.Markdown("Auto SAM is mainly for semantic segmentation and image layout generation, which is supported based on ControlNet. You must have ControlNet extension installed, and you should not change its directory name (sd-webui-controlnet).")
-                    gr.Markdown("The annotator directory inside the SAM extension directory is only a symbolic link. This is to save your space and make the extension repository clean.")
 
                     with gr.Accordion(label="Auto SAM Config", open=False):
                         gr.Markdown("You may configurate automatic sam generation. See [here](https://github.com/facebookresearch/segment-anything/blob/main/segment_anything/automatic_mask_generator.py#L35-L96) for explanation of each parameter. If you still cannot understand, use default.")
@@ -654,7 +659,7 @@ class Script(scripts.Script):
                         with gr.TabItem(label="ControlNet"):
                             gr.Markdown(
                                 "You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. "
-                                "Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
+                                "[EditAnything](https://github.com/sail-sg/EditAnything) models in lllyasviel format are available [here](https://huggingface.co/shgao/edit-anything-v0-4-lllyasviel-format/tree/main), but the test is still on the way. I discourage you from trying EditAnything at this moment.")
                             cnet_seg_processor, cnet_seg_processor_res, cnet_seg_gallery_input, cnet_seg_pixel_perfect, cnet_seg_resize_mode = ui_processor(use_cnet=(max_cn_num() > 0))
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
                             cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
