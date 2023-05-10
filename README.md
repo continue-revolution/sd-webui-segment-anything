@@ -200,3 +200,19 @@ You can sponsor me via WeChat or Alipay.
 | WeChat | Alipay |
 | --- | --- |
 | ![216aff0250c7fd2bb32eeb4f7aae623](https://user-images.githubusercontent.com/63914308/232824466-21051be9-76ce-4862-bb0d-a431c186fce1.jpg) | ![15fe95b4ada738acf3e44c1d45a1805](https://user-images.githubusercontent.com/63914308/232824545-fb108600-729d-4204-8bec-4fd5cc8a14ec.jpg) |
+
+## GET `/sam/sam-model`
+You can use this API to get the currently available SAM models.
+
+Example:
+```python
+import requests
+url = "http://localhost:7861/sam/sam-model"
+response = requests.get(url)
+reply = response.json()
+print(reply)
+# Example Output:
+# ["sam_vit_b_01ec64.pth", "sam_vit_h_4b8939.pth", "sam_vit_l_0b3195.pth"]
+```
+
+You will receive a list of SAM models that are available, which you can then utilize to set the `sam_model_name` parameter for the predict API.
