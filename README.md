@@ -26,6 +26,7 @@ This extension has been significantly refactored on `2023/04/24`. If you wish to
 - [ ] Option to crop mask and separate images according to bounding boxes
 - [ ] Support `Resize by` in img2img panel
 - [ ] Batch ControlNet inpainting
+- [ ] Support [Track-Anything](https://github.com/gaomingqi/Track-Anything)
 
 ## FAQ
 
