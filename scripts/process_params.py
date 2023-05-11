@@ -6,8 +6,8 @@ from modules import shared
 
 def max_cn_num():
     if shared.opts.data is None:
-        return 0
-    return int(shared.opts.data.get('control_net_max_models_num', 0))
+        return 1
+    return int(shared.opts.data.get('control_net_max_models_num', 1))
 
 
 class SAMInpaintUnit:
