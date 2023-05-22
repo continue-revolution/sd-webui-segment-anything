@@ -11,17 +11,17 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 - `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! You can copy SAM generated masks to ControlNet to do inpainting. Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to use it. ControlNet inpainting has far better performance compared to general-purposed models, and you do not need to download inpainting-specific models anymore.
 - `2023/04/24`: [Feature] Automatic segmentation support released! Functionalities with * require you to have [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) installed. This update includes support for 
     - *[ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) semantic segmentation
-    - [EditAnything](https://github.com/sail-sg/EditAnything) un-semantic segmentation (Not tested)
+    - [EditAnything](https://github.com/sail-sg/EditAnything) un-semantic segmentation
     - Image layout generation (single image + batch process)
     - *Image masking with categories (single image + batch process)
     - *Inpaint not masked for ControlNet inpainting on txt2img panel
 - `2023/04/29`: [Feature] API has been completely refactored. You can access all features for **single image process** through API. API documentation has been moved to [wiki](https://github.com/continue-revolution/sd-webui-segment-anything/wiki/API).
+- `2023/05/22`: [Feature] [EditAnything](https://github.com/sail-sg/EditAnything) is ready to use! You can generate random segmentation and copy the output to EditAnything ControlNet.
 
 This extension has been significantly refactored on `2023/04/24`. If you wish to revert to older version, please `git checkout 724b4db`.
 
 ## TODO
 
-- [ ] Test EditAnything
 - [ ] Color selection for mask region and unmask region
 - [ ] Option to crop mask and separate images according to bounding boxes
 - [ ] Support `Resize by` in img2img panel
@@ -44,7 +44,7 @@ You should know the following before submitting an issue.
 
 4. It is impossible to support [color inpainting](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22) at this moment, because gradio wierdly enlarge the input image which slows down your browser, or even freeze your page. I have already implemented this feature, though, but I made it invisible. Note that ControlNet v1.1 inpainting model is very strong, and you do not need to rely on the traditional inpainting anymore. ControlNet v1.1 does not support color inpainting.
 
-5. [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything) and [EditAnything](https://github.com/sail-sg/EditAnything) and A LOT of other popular SAM extensions have been supported. For Inpaint-Anything, you may check [this issue](https://github.com/continue-revolution/sd-webui-segment-anything/issues/60) for how to use. For EditAnything, this extension has **in-theory** supported, but since they only published diffusers models which probably only work for SD 2.x + [diffusers package](https://github.com/huggingface/diffusers), I am unable to test at this moment. I will update once they release models in lllyasviel format. I am always open to support any other interesting applications, submit a feature request if you find another interesting one.
+5. [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything) and [EditAnything](https://github.com/sail-sg/EditAnything) and A LOT of other popular SAM extensions have been supported. For Inpaint-Anything, you may check [this issue](https://github.com/continue-revolution/sd-webui-segment-anything/issues/60) for how to use. For EditAnything, please check [how to use](#controlnet). I am always open to support any other interesting applications, submit a feature request if you find another interesting one.
 
 6. If you have a job opportunity and think I am a good fit, please feel free to send me an email.
 
@@ -85,8 +85,7 @@ Automatic Segmentation has been supported in this extension. It has the followin
 However, there are some existing problems with AutoSAM:
 1. You are required to install [Mikubill ControlNet Extension](https://github.com/Mikubill/sd-webui-controlnet) to use functionality 1 and 4. Please do not change the directory name (`sd-webui-controlnet`).
 2. You can observe drastic improvement if you combine `seg_ufade20k` and SAM. You may only observe some slight improvement if you combine one of the `Oneformer` preprocessors (`seg_ofade20k`&`seg_ofcoco`).
-3. [EditAnything](https://github.com/sail-sg/EditAnything) only released SD2.1 diffusers models. Even if they release lllyasviel models, their models might not be compatible with most community-based SD1.5 models.
-4. Image layout generation has a pretty bad performance for anime images. I discourage you from using this functionality if you are dealing with anime images. I'm not sure about the performance for real images.
+3. Image layout generation has a pretty bad performance for anime images. I discourage you from using this functionality if you are dealing with anime images. I'm not sure about the performance for real images.
 
 ## How to Use
 
@@ -134,6 +133,13 @@ If you have previously enabled other copys while using this extension, you may w
 3. Check `Copy to ControlNet Segmentation` and select the correct ControlNet index where you are using ControlNet segmentation models if you wish to use Multi-ControlNet.
 4. Configurate ControlNet panel. Click `Enable`, preprocessor choose `none`, model choose `control_v11p_sd15_seg [e1f51eb9]`. There is no need to upload image to the ControlNet segmentation panel.
 5. Write your prompts, configurate A1111 panel and click `Generate`.
+6. If you want to use [EditAnything](https://github.com/sail-sg/EditAnything), you need to modify some steps above:
+    - In step 1: you need to choose `random` preprocessor.
+    - Between step 3 & 4: download
+        - SD 1.5 [weight](https://huggingface.co/shgao/edit-anything-v0-4-lllyasviel-format/resolve/main/control_v11p_sd15_sam_v0_4.pth) to `${a1111-webui}/models/ControlNet` or `${sd-webui-controlnet}/models`, [config](https://huggingface.co/shgao/edit-anything-v0-4-lllyasviel-format/resolve/main/control_v11p_sd15_sam_v0_4.yaml) to `${sd-webui-controlnet}/models`
+        - SD 2.1 [weight](https://huggingface.co/shgao/edit-anything-v0-4-lllyasviel-format/resolve/main/control_v11p_sd21_sam_v0_4.pth) to `${a1111-webui}/models/ControlNet` or `${sd-webui-controlnet}/models`, [config](https://huggingface.co/shgao/edit-anything-v0-4-lllyasviel-format/resolve/main/control_v11p_sd21_sam_v0_4.yaml) to `${sd-webui-controlnet}/models`
+    - In step 4: model choose `control_v11p_sd15_seg [e1f51eb9]`
+        
 
 #### Image Layout
 

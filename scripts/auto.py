@@ -102,7 +102,7 @@ def random_segmentation(img):
     print("Auto SAM generating random segmentation for Edit-Anything")
     img_np = np.array(img.convert("RGB"))
     annotations = global_sam.generate(img_np)
-    annotations = sorted(annotations, key=lambda x: x['area'], reverse=True)
+    # annotations = sorted(annotations, key=lambda x: x['area'], reverse=True)
     print(f"Auto SAM generated {len(annotations)} masks")
     H, W, _ = img_np.shape
     color_map = np.zeros((H, W, 3), dtype=np.uint8)

@@ -654,7 +654,7 @@ class Script(scripts.Script):
                         with gr.TabItem(label="ControlNet"):
                             gr.Markdown(
                                 "You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. "
-                                "Non-semantic segmentation for [Edit-Anything](https://github.com/sail-sg/EditAnything) will be supported [when they convert their models to lllyasviel format](https://github.com/sail-sg/EditAnything/issues/14).")
+                                "You can also utilize [Edit-Anything](https://github.com/sail-sg/EditAnything) and generate images according to random segmentation which preserve image layout.")
                             cnet_seg_processor, cnet_seg_processor_res, cnet_seg_gallery_input, cnet_seg_pixel_perfect, cnet_seg_resize_mode = ui_processor(use_cnet=(max_cn_num() > 0))
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
                             cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
