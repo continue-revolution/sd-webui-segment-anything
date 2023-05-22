@@ -99,6 +99,7 @@ If you have previously enabled other copys while using this extension, you may w
 5. Click `Preview Segmentation` button. Due to the limitation of SAM, if there are multiple bounding boxes, your point prompts will not take effect when generating masks.
 6. Choose your favorite segmentation.
 7. Optionally check `Expand Mask` and specify the amount, then click `Update Mask`.
+8. [**VERY IMPORTANT**] Update your ControlNet and check `Allow other script to control this extension` (**MUST**) on your ControlNet settings.
 
 #### txt2img
 1. You may only copy image and mask to ControlNet inpainting. 
@@ -108,7 +109,6 @@ If you have previously enabled other copys while using this extension, you may w
 5. Write your prompts, configurate A1111 panel and click `Generate`.
 
 #### img2img
-1. Update your ControlNet (**MUST**) and check `Allow other script to control this extension` on your ControlNet settings.
 2. Check `Copy to Inpaint Upload & ControlNet Inpainting`. There is no need to select ControlNet index.
 3. Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel.
 4. Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompts, configurate A1111 panel and click `Generate`.
