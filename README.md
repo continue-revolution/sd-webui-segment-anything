@@ -109,9 +109,9 @@ If you have previously enabled other copys while using this extension, you may w
 5. Write your prompts, configurate A1111 panel and click `Generate`.
 
 #### img2img
-2. Check `Copy to Inpaint Upload & ControlNet Inpainting`. There is no need to select ControlNet index.
-3. Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel.
-4. Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompts, configurate A1111 panel and click `Generate`.
+1. Check `Copy to Inpaint Upload & ControlNet Inpainting`. There is no need to select ControlNet index.
+2. Configurate ControlNet panel. Click `Enable`, preprocessor choose `inpaint_global_harmonious`, model choose `control_v11p_sd15_inpaint [ebff9138]`. There is no need to upload image to the ControlNet inpainting panel.
+3. Click `Switch to Inpaint Upload` button. There is no need to upload another image or mask, just leave them blank. Write your prompts, configurate A1111 panel and click `Generate`.
 
 ### Batch Process
 1. Choose your SAM model, GroundingDINO model, text prompt, box threshold and mask expansion amount. Enter the source and destination directories of your images.
