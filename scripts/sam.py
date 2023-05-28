@@ -27,6 +27,7 @@ scripts_sam_model_dir = os.path.join(scripts.basedir(), "models/sam")
 sd_sam_model_dir = os.path.join(models_path, "sam")
 sam_model_dir = sd_sam_model_dir if os.path.exists(sd_sam_model_dir) else scripts_sam_model_dir 
 sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
+sam_device = device
 
 
 txt2img_width: gr.Slider = None
@@ -74,7 +75,7 @@ def load_sam_model(sam_checkpoint):
     sam_checkpoint = os.path.join(sam_model_dir, sam_checkpoint)
     torch.load = unsafe_torch_load
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-    sam.to(device=device)
+    sam.to(device=sam_device)
     sam.eval()
     torch.load = load
     return sam
@@ -114,11 +115,11 @@ def refresh_sam_models(*inputs):
 
 
 def init_sam_model(sam_model_name):
-    print("Initializing SAM")
+    print(f"Initializing SAM to {sam_device}")
     if sam_model_name in sam_model_cache:
         sam = sam_model_cache[sam_model_name]
-        if shared.cmd_opts.lowvram:
-            sam.to(device=device)
+        if shared.cmd_opts.lowvram or (str(sam_device) not in str(sam.device)):
+            sam.to(device=sam_device)
         return sam
     elif sam_model_name in sam_model_list:
         clear_sam_cache()
@@ -213,7 +214,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         masks, _, _ = predictor.predict_torch(
             point_coords=None,
             point_labels=None,
-            boxes=transformed_boxes.to(device),
+            boxes=transformed_boxes.to(sam_device),
             multimask_output=True)
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
     else:
@@ -290,7 +291,7 @@ def dino_batch_process(
         masks, _, _ = predictor.predict_torch(
             point_coords=None,
             point_labels=None,
-            boxes=transformed_boxes.to(device),
+            boxes=transformed_boxes.to(sam_device),
             multimask_output=(dino_batch_output_per_image == 1))
         
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
@@ -548,9 +549,17 @@ class Script(scripts.Script):
         ui_process = ()
         with gr.Accordion('Segment Anything', open=False):
             with gr.Row():
-                sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
-                sam_refresh_models = ToolButton(value=refresh_symbol)
-                sam_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+                with gr.Column(scale=10):
+                    with gr.Row():
+                        sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
+                        sam_refresh_models = ToolButton(value=refresh_symbol)
+                        sam_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+                with gr.Column(scale=1):
+                    sam_use_cpu = gr.Checkbox(value=False, label="Use CPU for SAM")
+                    def change_sam_device(use_cpu=False):
+                        global sam_device
+                        sam_device = "cpu" if use_cpu else device
+                    sam_use_cpu.change(fn=change_sam_device, inputs=[sam_use_cpu], show_progress=False)
             with gr.Tabs():
                 with gr.TabItem(label="Single Image"):
                     gr.HTML(value="<p>Left click the image to add one positive point (black dot). Right click the image to add one negative point (red dot). Left click the point to remove it.</p>")

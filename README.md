@@ -9,7 +9,7 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 - `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! You can enter text prompts to generate bounding boxes and segmentation masks.
 - `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
 - `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! You can copy SAM generated masks to ControlNet to do inpainting. Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to use it. ControlNet inpainting has far better performance compared to general-purposed models, and you do not need to download inpainting-specific models anymore.
-- `2023/04/24`: [Feature] Automatic segmentation support released! Functionalities with * require you to have [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) installed. This update includes support for 
+- `2023/04/24`: [Feature] Automatic segmentation support released! Functionalities with * require you to have [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) installed. Last commit: `724b4db`. This update includes support for 
     - *[ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) semantic segmentation
     - [EditAnything](https://github.com/sail-sg/EditAnything) un-semantic segmentation
     - Image layout generation (single image + batch process)
@@ -17,8 +17,7 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
     - *Inpaint not masked for ControlNet inpainting on txt2img panel
 - `2023/04/29`: [Feature] API has been completely refactored. You can access all features for **single image process** through API. API documentation has been moved to [wiki](https://github.com/continue-revolution/sd-webui-segment-anything/wiki/API).
 - `2023/05/22`: [Feature] [EditAnything](https://github.com/sail-sg/EditAnything) is ready to use! You can generate random segmentation and copy the output to EditAnything ControlNet.
-
-This extension has been significantly refactored on `2023/04/24`. If you wish to revert to older version, please `git checkout 724b4db`.
+- `2023/05/29`: [Feature] You may now do SAM inference on CPU. This is for some MAC users who are not able to do SAM inference on GPU. I discourage other users from using this feature because it is significantly slower than CUDA. Last commit: `89a2213`.
 
 ## TODO
 
