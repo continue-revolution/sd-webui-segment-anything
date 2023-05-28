@@ -35,21 +35,32 @@ There are already at least two great tutorials on how to use this extension. Che
 
 You should know the following before submitting an issue.
 
-1. This extension has almost moved into maintenance phase. Although I don't think there will be huge updates in the foreseeable future, Mikubill ControlNet Extension is still fast developing, and I'm looking forward to more opportunities to connect my extension to ControlNet. Despite of this, I will continue to deal with issues, and monitor new research works to see if they are worth supporting. I welcome any community contribution and any feature requests.
+1. I observe some common problems for Windows users:
+    - `pycocotool`: [here](https://github.com/cocodataset/cocoapi/issues/415#issuecomment-627313816).
+    - `_C`: [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/32#issuecomment-1513873296). DO NOT skip steps.
 
-2. You must use gradio>=3.23.0 and WebUI>=`22bcc7be` to use this extension. A1111 WebUI is stable, and some integrated package authors have also updated their packages (for example, if you are using the package from [@Akegarasu](https://github.com/Akegarasu), i.e. 秋叶整合包, it has already been updated according to [this video](https://www.bilibili.com/video/BV1iM4y1y7oA)). Also, supporting different versions of WebUI will be a huge time commitment, during which I can create many more features. Please update your WebUI and it is safe to use. I'm not planning to support some old commits of WebUI, such as `a9fed7c3`.
+    If you are still unable to install GroundingDINO on Windows AND you cannot resolve this problem AFTER searching for issues inside [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues) [here](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and [here](https://github.com/IDEA-Research/GroundingDINO/issues), You may refer to [#98](https://github.com/continue-revolution/sd-webui-segment-anything/issues/98) and watch the videos there. Note that I develop on linux, so I cannot guarantee that any video tutorials may or may not work.
 
-3. You are required to install [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) to use GroundingDINO. If your device does not have CUDA Toolkit installed, GroundingDINO will not find `_C`. Follow steps decribed [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/32#issuecomment-1513873296) to resolve the `_C` problem. DO NOT skip steps.
+2.  If you 
+    - cannot use ControlNet/WebUI after installing this extension even when you are/are not using this extension
+    - observe problems like [AttributeError: 'bool' object has no attribute 'enabled'](https://github.com/continue-revolution/sd-webui-segment-anything/issues/106) and [TypeError: 'bool' object is not subscriptable](https://github.com/continue-revolution/sd-webui-segment-anything/issues/93) from ControlNet
+    - when you disable SAM extension, the problem disappear
+    
+    The problem is most likely due to some other extensions which might also change the position inside the extension list to control ControlNet. The easiest solution is [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/93#issuecomment-1546777860). This change will precede SAM extension to be before ControlNet, bypassing the internal preceding code, and will not prevent you from receiving any updates from me. I am not planning to refactor my code to bypass this problem. I did not expect to control ControlNet when I created this extension, but ControlNet indeed grow much faster than my expectation.
 
-4. It is impossible to support [color inpainting](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22) at this moment, because gradio wierdly enlarge the input image which slows down your browser, or even freeze your page. I have already implemented this feature, though, but I made it invisible. Note that ControlNet v1.1 inpainting model is very strong, and you do not need to rely on the traditional inpainting anymore. ControlNet v1.1 does not support color inpainting.
+3. This extension has almost moved into maintenance phase. Although I don't think there will be huge updates in the foreseeable future, Mikubill ControlNet Extension is still fast developing, and I'm looking forward to more opportunities to connect my extension to ControlNet. Despite of this, I will continue to deal with issues, and monitor new research works to see if they are worth supporting. I welcome any community contribution and any feature requests.
 
-5. [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything) and [EditAnything](https://github.com/sail-sg/EditAnything) and A LOT of other popular SAM extensions have been supported. For Inpaint-Anything, you may check [this issue](https://github.com/continue-revolution/sd-webui-segment-anything/issues/60) for how to use. For EditAnything, please check [how to use](#controlnet). I am always open to support any other interesting applications, submit a feature request if you find another interesting one.
+4. You must use gradio>=3.23.0 and WebUI>=`22bcc7be` to use this extension. A1111 WebUI is stable, and some integrated package authors have also updated their packages (for example, if you are using the package from [@Akegarasu](https://github.com/Akegarasu), i.e. 秋叶整合包, it has already been updated according to [this video](https://www.bilibili.com/video/BV1iM4y1y7oA)). Also, supporting different versions of WebUI will be a huge time commitment, during which I can create many more features. Please update your WebUI and it is safe to use. I'm not planning to support some old commits of WebUI, such as `a9fed7c3`.
 
-6. If you have a job opportunity and think I am a good fit, please feel free to send me an email.
+5. It is impossible to support [color inpainting](https://github.com/continue-revolution/sd-webui-segment-anything/issues/22) at this moment, because gradio wierdly enlarge the input image which slows down your browser, or even freeze your page. I have already implemented this feature, though, but I made it invisible. Note that ControlNet v1.1 inpainting model is very strong, and you do not need to rely on the traditional inpainting anymore. ControlNet v1.1 does not support color inpainting.
 
-7. If you want to sponsor me, please go to [sponsor](#sponsor) section and scan the corresponding QR code.
+6. [Inpaint-Anything](https://github.com/geekyutao/Inpaint-Anything) and [EditAnything](https://github.com/sail-sg/EditAnything) and A LOT of other popular SAM extensions have been supported. For Inpaint-Anything, you may check [this issue](https://github.com/continue-revolution/sd-webui-segment-anything/issues/60) for how to use. For EditAnything, please check [how to use](#controlnet). I am always open to support any other interesting applications, submit a feature request if you find another interesting one.
 
-## Install
+7. If you have a job opportunity and think I am a good fit, please feel free to send me an email.
+
+8. If you want to sponsor me, please go to [sponsor](#sponsor) section and scan the corresponding QR code.
+
+## Installation
 
 Download this extension to `${sd-webui}/extensions` use whatever way you like (git clone or install from UI)
 
@@ -83,7 +94,7 @@ Automatic Segmentation has been supported in this extension. It has the followin
 
 However, there are some existing problems with AutoSAM:
 1. You are required to install [Mikubill ControlNet Extension](https://github.com/Mikubill/sd-webui-controlnet) to use functionality 1 and 4. Please do not change the directory name (`sd-webui-controlnet`).
-2. You can observe drastic improvement if you combine `seg_ufade20k` and SAM. You may only observe some slight improvement if you combine one of the `Oneformer` preprocessors (`seg_ofade20k`&`seg_ofcoco`).
+2. You can observe drastic improvement if you combine `seg_ufade20k` and SAM. You may only observe some slight improvement if you combine one of the `Oneformer` preprocessors (`seg_ofade20k`&`seg_ofcoco`). This is because [Oneformer](https://github.com/SHI-Labs/OneFormer) is already very strong, compared to Uniformer, for semantic segmentation. SAM can only improve some details of semantic segmentation instead of showing some categories semantic models cannot show, because SAM is NOT a semantic-recognizable model.
 3. Image layout generation has a pretty bad performance for anime images. I discourage you from using this functionality if you are dealing with anime images. I'm not sure about the performance for real images.
 
 ## How to Use
