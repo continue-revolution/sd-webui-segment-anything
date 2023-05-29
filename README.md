@@ -26,6 +26,7 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 - [ ] Support `Resize by` in img2img panel
 - [ ] Batch ControlNet inpainting
 - [ ] Support [Track-Anything](https://github.com/gaomingqi/Track-Anything)
+- [ ] Generate mask according to bounding box only
 
 ## FAQ
 
