@@ -4,8 +4,10 @@ title: "[Feature]: "
 labels: ["feature-request"]
 
 body:  
-- type: textarea
+  - type: textarea
     id: feature
     attributes:
       label: Expected behavior
       description: Please describe the feature you want.
+    validations:
+      required: true
