@@ -11,7 +11,8 @@ import local_groundingdino
 
 
 dino_model_cache = OrderedDict()
-dino_model_dir = os.path.join(scripts.basedir(), "models/grounding-dino")
+sam_extension_dir = scripts.basedir()
+dino_model_dir = os.path.join(sam_extension_dir, "models/grounding-dino")
 dino_model_list = ["GroundingDINO_SwinT_OGC (694MB)", "GroundingDINO_SwinB (938MB)"]
 dino_model_info = {
     "GroundingDINO_SwinT_OGC (694MB)": {
@@ -25,21 +26,7 @@ dino_model_info = {
         "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swinb_cogcoor.pth"
     },
 }
-
 dino_install_issue_text = "permanently switch to local groundingdino on Settings/Segment Anything or submit an issue to https://github.com/IDEA-Research/Grounded-Segment-Anything/issues."
-
-
-def install_groundingdino_dependencies():
-    import launch
-    local_groundingdino_dir = os.path.join(scripts.basedir(), "local_groundingdino")
-    local_groundingdino_req_file = os.path.join(local_groundingdino_dir, "requirements_groundingdino.txt")
-    with open(local_groundingdino_req_file) as file:
-        for lib in file:
-            lib = lib.strip()
-            if not launch.is_installed(lib):
-                launch.run_pip(
-                    f"install {lib}",
-                    f"groundingdino requirement: {lib}")
 
 
 def install_goundingdino():
@@ -64,7 +51,6 @@ def install_goundingdino():
                 run_pip_uninstall(
                     f"groundingdino",
                     f"sd-webui-segment-anything requirement: groundingdino")
-                install_groundingdino_dependencies()
             else:
                 print(f"Failed to build dymanic library. Will uninstall GroundingDINO from pip and re-try installing from GitHub source code. Please {dino_install_issue_text}")
                 run_pip_uninstall(
@@ -87,7 +73,6 @@ def install_goundingdino():
         import traceback
         traceback.print_exc()
         print(f"GroundingDINO install failed. Will fall back to local groundingdino this time. Please {dino_install_issue_text}")
-        install_groundingdino_dependencies()
         return False
 
 

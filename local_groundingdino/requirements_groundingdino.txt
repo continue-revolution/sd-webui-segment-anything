@@ -1,5 +1,0 @@
-torchvision
-addict
-yapf
-opencv-python
-supervision==0.6.0
