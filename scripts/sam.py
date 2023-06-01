@@ -27,6 +27,7 @@ scripts_sam_model_dir = os.path.join(scripts.basedir(), "models/sam")
 sd_sam_model_dir = os.path.join(models_path, "sam")
 sam_model_dir = sd_sam_model_dir if os.path.exists(sd_sam_model_dir) else scripts_sam_model_dir 
 sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
+sam_device = device
 
 
 txt2img_width: gr.Slider = None
@@ -74,7 +75,7 @@ def load_sam_model(sam_checkpoint):
     sam_checkpoint = os.path.join(sam_model_dir, sam_checkpoint)
     torch.load = unsafe_torch_load
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-    sam.to(device=device)
+    sam.to(device=sam_device)
     sam.eval()
     torch.load = load
     return sam
@@ -114,11 +115,11 @@ def refresh_sam_models(*inputs):
 
 
 def init_sam_model(sam_model_name):
-    print("Initializing SAM")
+    print(f"Initializing SAM to {sam_device}")
     if sam_model_name in sam_model_cache:
         sam = sam_model_cache[sam_model_name]
-        if shared.cmd_opts.lowvram:
-            sam.to(device=device)
+        if shared.cmd_opts.lowvram or (str(sam_device) not in str(sam.device)):
+            sam.to(device=sam_device)
         return sam
     elif sam_model_name in sam_model_list:
         clear_sam_cache()
@@ -194,14 +195,9 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     sam_predict_result = " done."
     if dino_enabled:
         boxes_filt, install_success = dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold)
-        if install_success and dino_preview_checkbox is not None and dino_preview_checkbox and dino_preview_boxes_selection is not None:
+        if dino_preview_checkbox is not None and dino_preview_checkbox and dino_preview_boxes_selection is not None:
             valid_indices = [int(i) for i in dino_preview_boxes_selection if int(i) < boxes_filt.shape[0]]
             boxes_filt = boxes_filt[valid_indices]
-        if not install_success:
-            if len(positive_points) == 0 and len(negative_points) == 0:
-                return [], f"GroundingDINO installment has failed. Check your terminal for more detail and {dino_install_issue_text}. "
-            else:
-                sam_predict_result += f" However, GroundingDINO installment has failed. Your process automatically fall back to point prompt only. Check your terminal for more detail and {dino_install_issue_text}. "
     sam = init_sam_model(sam_model_name)
     print(f"Running SAM Inference {image_np_rgb.shape}")
     predictor = SamPredictor(sam)
@@ -213,7 +209,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
         masks, _, _ = predictor.predict_torch(
             point_coords=None,
             point_labels=None,
-            boxes=transformed_boxes.to(device),
+            boxes=transformed_boxes.to(sam_device),
             multimask_output=True)
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
     else:
@@ -236,7 +232,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             multimask_output=True)
         masks = masks[:, None, ...]
     garbage_collect(sam)
-    return create_mask_output(image_np, masks, boxes_filt), sam_predict_status + sam_predict_result
+    return create_mask_output(image_np, masks, boxes_filt), sam_predict_status + (sam_predict_result + "" if install_success else f" However, GroundingDINO installment has failed. Your process automatically fall back to local groundingdino. Check your terminal for more detail and {dino_install_issue_text}.")
 
 
 def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
@@ -246,11 +242,9 @@ def dino_predict(input_image, dino_model_name, text_prompt, box_threshold):
         return None, gr.update(), gr.update(visible=True, value=f"GroundingDINO requires text prompt.")
     image_np = np.array(input_image)
     boxes_filt, install_success = dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold)
-    if not install_success:
-        return None, gr.update(), gr.update(visible=True, value=f"GroundingDINO installment failed. Preview failed. See your terminal for more detail and {dino_install_issue_text}")
     boxes_filt = boxes_filt.numpy()
     boxes_choice = [str(i) for i in range(boxes_filt.shape[0])]
-    return Image.fromarray(show_boxes(image_np, boxes_filt.astype(int), show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice), gr.update(visible=False)
+    return Image.fromarray(show_boxes(image_np, boxes_filt.astype(int), show_index=True)), gr.update(choices=boxes_choice, value=boxes_choice), gr.update(visible=False) if install_success else gr.update(visible=True, value=f"GroundingDINO installment failed. Your process automatically fall back to local groundingdino. See your terminal for more detail and {dino_install_issue_text}")
 
 
 def dino_batch_process(
@@ -276,9 +270,6 @@ def dino_batch_process(
         image_np_rgb = image_np[..., :3]
 
         boxes_filt, install_success = dino_predict_internal(input_image, batch_dino_model_name, batch_text_prompt, batch_box_threshold)
-        if not install_success:
-            return f"GroundingDINO installment failed. Batch processing failed. See your terminal for more detail and {dino_install_issue_text}"
-
         if boxes_filt is None or boxes_filt.shape[0] == 0:
             msg = f"GroundingDINO generated 0 box for image {input_image_file}, please lower the box threshold if you want any segmentation for this image. "
             print(msg)
@@ -290,7 +281,7 @@ def dino_batch_process(
         masks, _, _ = predictor.predict_torch(
             point_coords=None,
             point_labels=None,
-            boxes=transformed_boxes.to(device),
+            boxes=transformed_boxes.to(sam_device),
             multimask_output=(dino_batch_output_per_image == 1))
         
         masks = masks.permute(1, 0, 2, 3).cpu().numpy()
@@ -302,7 +293,7 @@ def dino_batch_process(
             dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask)
     
     garbage_collect(sam)
-    return process_info + "Done"
+    return process_info + "Done" + ("" if install_success else f". However, GroundingDINO installment has failed. Your process automatically fall back to local groundingdino. See your terminal for more detail and {dino_install_issue_text}")
 
 
 def cnet_seg(
@@ -551,6 +542,17 @@ class Script(scripts.Script):
                 sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
                 sam_refresh_models = ToolButton(value=refresh_symbol)
                 sam_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+                with gr.Column(scale=10):
+                    with gr.Row():
+                        sam_model_name = gr.Dropdown(label="SAM Model", choices=sam_model_list, value=sam_model_list[0] if len(sam_model_list) > 0 else None)
+                        sam_refresh_models = ToolButton(value=refresh_symbol)
+                        sam_refresh_models.click(refresh_sam_models, sam_model_name, sam_model_name)
+                with gr.Column(scale=1):
+                    sam_use_cpu = gr.Checkbox(value=False, label="Use CPU for SAM")
+                    def change_sam_device(use_cpu=False):
+                        global sam_device
+                        sam_device = "cpu" if use_cpu else device
+                    sam_use_cpu.change(fn=change_sam_device, inputs=[sam_use_cpu], show_progress=False)
             with gr.Accordion("Mask color/crop setting", open=False):
                 with gr.Row(): # TODO: Implement in backend
                     sam_unmask_checkbox = gr.Checkbox(label="Change masked color", value=False)
@@ -659,7 +661,7 @@ class Script(scripts.Script):
                         with gr.TabItem(label="ControlNet"):
                             gr.Markdown(
                                 "You can enhance semantic segmentation for control_v11p_sd15_seg from lllyasviel. "
-                                "[EditAnything](https://github.com/sail-sg/EditAnything) models in lllyasviel format are available [here](https://huggingface.co/shgao/edit-anything-v0-4-lllyasviel-format/tree/main), but the test is still on the way. I discourage you from trying EditAnything at this moment.")
+                                "You can also utilize [Edit-Anything](https://github.com/sail-sg/EditAnything) and generate images according to random segmentation which preserve image layout.")
                             cnet_seg_processor, cnet_seg_processor_res, cnet_seg_gallery_input, cnet_seg_pixel_perfect, cnet_seg_resize_mode = ui_processor(use_cnet=(max_cn_num() > 0))
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
                             cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
@@ -788,4 +790,11 @@ def on_after_component(component, **_kwargs):
         return
 
 
+
+def on_ui_settings():
+    section = ('segment_anything', "Segment Anything")
+    shared.opts.add_option("sam_use_local_groundingdino", shared.OptionInfo(False, "Use local groundingdino to bypass C++ problem", section=section))
+
+
+script_callbacks.on_ui_settings(on_ui_settings)
 script_callbacks.on_after_component(on_after_component)

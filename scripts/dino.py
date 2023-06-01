@@ -7,10 +7,12 @@ from collections import OrderedDict
 
 from modules import scripts, shared
 from modules.devices import device, torch_gc, cpu
+import local_groundingdino
 
 
 dino_model_cache = OrderedDict()
-dino_model_dir = os.path.join(scripts.basedir(), "models/grounding-dino")
+sam_extension_dir = scripts.basedir()
+dino_model_dir = os.path.join(sam_extension_dir, "models/grounding-dino")
 dino_model_list = ["GroundingDINO_SwinT_OGC (694MB)", "GroundingDINO_SwinB (938MB)"]
 dino_model_info = {
     "GroundingDINO_SwinT_OGC (694MB)": {
@@ -24,24 +26,53 @@ dino_model_info = {
         "url": "https://huggingface.co/ShilongLiu/GroundingDINO/resolve/main/groundingdino_swinb_cogcoor.pth"
     },
 }
-
-dino_install_issue_text = "submit an issue to https://github.com/IDEA-Research/Grounded-Segment-Anything/issues."
+dino_install_issue_text = "permanently switch to local groundingdino on Settings/Segment Anything or submit an issue to https://github.com/IDEA-Research/Grounded-Segment-Anything/issues."
 
 
 def install_goundingdino():
+    if shared.opts.data.get("sam_use_local_groundingdino", False):
+        print("Using local groundingdino.")
+        return False
+
+    def verify_dll(install_local=True):
+        try:
+            from groundingdino import _C
+            print("GroundingDINO dynamic library have been successfully built.")
+            return True
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            def run_pip_uninstall(command, desc=None):
+                from launch import python, run
+                default_command_live = (os.environ.get('WEBUI_LAUNCH_LIVE_OUTPUT') == "1")
+                return run(f'"{python}" -m pip uninstall -y {command}', desc=f"Uninstalling {desc}", errdesc=f"Couldn't uninstall {desc}", live=default_command_live)
+            if install_local:
+                print(f"Failed to build dymanic library. Will uninstall GroundingDINO from pip and fall back to local groundingdino this time. Please {dino_install_issue_text}")
+                run_pip_uninstall(
+                    f"groundingdino",
+                    f"sd-webui-segment-anything requirement: groundingdino")
+            else:
+                print(f"Failed to build dymanic library. Will uninstall GroundingDINO from pip and re-try installing from GitHub source code. Please {dino_install_issue_text}")
+                run_pip_uninstall(
+                    f"uninstall groundingdino",
+                    f"sd-webui-segment-anything requirement: groundingdino")
+            return False
+
     import launch
     if launch.is_installed("groundingdino"):
-        return True
+        print("Found GroundingDINO in pip. Verifying if dynamic library build success.")
+        if verify_dll(install_local=False):
+            return True
     try:
         launch.run_pip(
             f"install git+https://github.com/IDEA-Research/GroundingDINO",
             f"sd-webui-segment-anything requirement: groundingdino")
-        print("GroundingDINO install success.")
-        return True
+        print("GroundingDINO install success. Verifying if dynamic library build success.")
+        return verify_dll()
     except Exception:
         import traceback
-        print(traceback.print_exc())
-        print(f"GroundingDINO install failed. Please {dino_install_issue_text}")
+        traceback.print_exc()
+        print(f"GroundingDINO install failed. Will fall back to local groundingdino this time. Please {dino_install_issue_text}")
         return False
 
 
@@ -68,7 +99,7 @@ def clear_dino_cache():
     torch_gc()
 
 
-def load_dino_model(dino_checkpoint):
+def load_dino_model(dino_checkpoint, dino_install_success):
     print(f"Initializing GroundingDINO {dino_checkpoint}")
     if dino_checkpoint in dino_model_cache:
         dino = dino_model_cache[dino_checkpoint]
@@ -76,9 +107,14 @@ def load_dino_model(dino_checkpoint):
             dino.to(device=device)
     else:
         clear_dino_cache()
-        from groundingdino.models import build_model
-        from groundingdino.util.slconfig import SLConfig
-        from groundingdino.util.utils import clean_state_dict
+        if dino_install_success:
+            from groundingdino.models import build_model
+            from groundingdino.util.slconfig import SLConfig
+            from groundingdino.util.utils import clean_state_dict
+        else:
+            from local_groundingdino.models import build_model
+            from local_groundingdino.util.slconfig import SLConfig
+            from local_groundingdino.util.utils import clean_state_dict
         args = SLConfig.fromfile(dino_model_info[dino_checkpoint]["config"])
         dino = build_model(args)
         checkpoint = torch.hub.load_state_dict_from_url(
@@ -91,8 +127,11 @@ def load_dino_model(dino_checkpoint):
     return dino
 
 
-def load_dino_image(image_pil):
-    import groundingdino.datasets.transforms as T
+def load_dino_image(image_pil, dino_install_success):
+    if dino_install_success:
+        import groundingdino.datasets.transforms as T
+    else:
+        from local_groundingdino.datasets import transforms as T
     transform = T.Compose(
         [
             T.RandomResize([800], max_size=1333),
@@ -129,11 +168,10 @@ def get_grounding_output(model, image, caption, box_threshold):
 
 def dino_predict_internal(input_image, dino_model_name, text_prompt, box_threshold):
     install_success = install_goundingdino()
-    if not install_success:
-        return None, False
     print("Running GroundingDINO Inference")
-    dino_image = load_dino_image(input_image.convert("RGB"))
-    dino_model = load_dino_model(dino_model_name)
+    dino_image = load_dino_image(input_image.convert("RGB"), install_success)
+    dino_model = load_dino_model(dino_model_name, install_success)
+    install_success = install_success or shared.opts.data.get("sam_use_local_groundingdino", False)
 
     boxes_filt = get_grounding_output(
         dino_model, dino_image, text_prompt, box_threshold
@@ -146,4 +184,4 @@ def dino_predict_internal(input_image, dino_model_name, text_prompt, box_thresho
         boxes_filt[i][2:] += boxes_filt[i][:2]
     gc.collect()
     torch_gc()
-    return boxes_filt, True
+    return boxes_filt, install_success

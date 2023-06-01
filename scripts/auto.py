@@ -6,6 +6,7 @@ from PIL import Image
 from collections import OrderedDict
 import numpy as np
 import torch
+import cv2
 from segment_anything import SamAutomaticMaskGenerator
 from modules import scripts, shared
 from modules.paths import extensions_dir
@@ -16,6 +17,33 @@ global_sam: SamAutomaticMaskGenerator = None
 sem_seg_cache = OrderedDict()
 sam_annotator_dir = os.path.join(scripts.basedir(), "annotator")
 original_uniformer_inference_segmentor = None
+
+
+def pad64(x):
+    return int(np.ceil(float(x) / 64.0) * 64 - x)
+
+
+def safer_memory(x):
+    # Fix many MAC/AMD problems
+    return np.ascontiguousarray(x.copy()).copy()
+
+
+def resize_image_with_pad(input_image, resolution):
+    from annotator.util import HWC3
+    img = HWC3(input_image)
+    H_raw, W_raw, _ = img.shape
+    k = float(resolution) / float(min(H_raw, W_raw))
+    interpolation = cv2.INTER_CUBIC if k > 1 else cv2.INTER_AREA
+    H_target = int(np.round(float(H_raw) * k))
+    W_target = int(np.round(float(W_raw) * k))
+    img = cv2.resize(img, (W_target, H_target), interpolation=interpolation)
+    H_pad, W_pad = pad64(H_target), pad64(W_target)
+    img_padded = np.pad(img, [[0, H_pad], [0, W_pad], [0, 0]], mode='edge')
+
+    def remove_pad(x):
+        return safer_memory(x[:H_target, :W_target])
+
+    return safer_memory(img_padded), remove_pad
 
 
 def blend_image_and_seg(image, seg, alpha=0.5):
@@ -74,7 +102,7 @@ def random_segmentation(img):
     print("Auto SAM generating random segmentation for Edit-Anything")
     img_np = np.array(img.convert("RGB"))
     annotations = global_sam.generate(img_np)
-    annotations = sorted(annotations, key=lambda x: x['area'], reverse=True)
+    # annotations = sorted(annotations, key=lambda x: x['area'], reverse=True)
     print(f"Auto SAM generated {len(annotations)} masks")
     H, W, _ = img_np.shape
     color_map = np.zeros((H, W, 3), dtype=np.uint8)
@@ -194,8 +222,7 @@ def semantic_segmentation(input_image, annotator_name, processor_res,
         global original_uniformer_inference_segmentor
         input_image_np = np.array(input_image)
         processor_res = pixel_perfect_lllyasviel(input_image_np, processor_res, use_pixel_perfect, resize_mode, target_W, target_H)
-        from annotator.util import resize_image, HWC3
-        input_image = resize_image(HWC3(input_image_np), processor_res)
+        input_image, remove_pad = resize_image_with_pad(input_image_np, processor_res)
         print("Generating semantic segmentation without SAM")
         if annotator_name == "seg_ufade20k":
             original_semseg = _uniformer(input_image)
@@ -205,6 +232,9 @@ def semantic_segmentation(input_image, annotator_name, processor_res,
             uniformer.inference_segmentor = inject_uniformer_inference_segmentor
             sam_semseg = _uniformer(input_image)
             uniformer.inference_segmentor = original_uniformer_inference_segmentor
+            original_semseg = remove_pad(original_semseg)
+            sam_semseg = remove_pad(sam_semseg)
+            input_image = remove_pad(input_image)
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
             return output_gallery, "Uniformer semantic segmentation of ade20k done. Left is segmentation before SAM, right is segmentation after SAM."
         else:
@@ -216,6 +246,9 @@ def semantic_segmentation(input_image, annotator_name, processor_res,
             OneformerDetector.__call__ = inject_oneformer_detector_call
             sam_semseg = _oneformer(input_image, dataset=dataset)
             OneformerDetector.__call__ = original_oneformer_call
+            original_semseg = remove_pad(original_semseg)
+            sam_semseg = remove_pad(sam_semseg)
+            input_image = remove_pad(input_image)
             output_gallery = [original_semseg, sam_semseg, blend_image_and_seg(input_image, original_semseg), blend_image_and_seg(input_image, sam_semseg)]
             return output_gallery, f"Oneformer semantic segmentation of {dataset} done. Left is segmentation before SAM, right is segmentation after SAM."
     else:
@@ -237,8 +270,7 @@ def categorical_mask_image(crop_processor, crop_processor_res, crop_category_inp
         return "Illegal class id. You may have input some string."
     crop_input_image_np = np.array(crop_input_image)
     crop_processor_res = pixel_perfect_lllyasviel(crop_input_image_np, crop_processor_res, crop_pixel_perfect, crop_resize_mode, target_W, target_H)
-    from annotator.util import resize_image, HWC3
-    crop_input_image = resize_image(HWC3(crop_input_image_np), crop_processor_res)
+    crop_input_image, remove_pad = resize_image_with_pad(crop_input_image_np, crop_processor_res)
     crop_input_image_copy = copy.deepcopy(crop_input_image)
     global original_uniformer_inference_segmentor
     print(f"Generating categories with processor {crop_processor}")
@@ -258,10 +290,11 @@ def categorical_mask_image(crop_processor, crop_processor_res, crop_category_inp
         OneformerDetector.__call__ = inject_oneformer_detector_call_categorical_mask
         sam_semseg = _oneformer(crop_input_image, dataset=dataset)
         OneformerDetector.__call__ = original_oneformer_call
+    sam_semseg = remove_pad(sam_semseg)
     mask = np.zeros(sam_semseg.shape, dtype=np.bool_)
     for i in filter_classes:
         mask[sam_semseg == i] = True
-    return mask, crop_input_image_copy
+    return mask, remove_pad(crop_input_image_copy)
 
 
 def register_auto_sam(sam, 
