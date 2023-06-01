@@ -20,15 +20,6 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 - `2023/05/29`: [v1.4.3](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.4.3) You may now do SAM inference on CPU by checking "Use CPU for SAM". This is for some MAC users who are not able to do SAM inference on GPU. I discourage other users from using this feature because it is significantly slower than CUDA. Last commit: `89a2213`.
 - `2023/06/01`: [v1.5.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.5.0) You may now choose to use local GroundingDINO to bypass C++ problem. See [FAQ](#faq)-1 for more detail.
 
-## TODO
-
-- [ ] Color selection for mask region and unmask region
-- [ ] Option to crop mask and separate images according to bounding boxes
-- [ ] Support `Resize by` in img2img panel
-- [ ] Batch ControlNet inpainting
-- [ ] Support [Track-Anything](https://github.com/gaomingqi/Track-Anything)
-- [ ] Generate mask according to bounding box only
-
 ## FAQ
 
 Thanks for suggestions from [github issues](https://github.com/continue-revolution/sd-webui-segment-anything/issues), [reddit](https://www.reddit.com/r/StableDiffusion/comments/12hkdy8/sd_webui_segment_everything/) and [bilibili](https://www.bilibili.com/video/BV1Tg4y1u73r/) to make this extension better.
