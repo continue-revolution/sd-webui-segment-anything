@@ -1,4 +1,4 @@
 models/*/*.pth
-scripts/__pycache__
+*/__pycache__
 GroundingDINO
 annotator
