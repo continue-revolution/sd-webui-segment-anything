@@ -4,20 +4,21 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 
 ## News
 
-- `2023/04/10`: [Release] SAM extension released! You can click on the image to generate segmentation masks.
-- `2023/04/12`: [Feature] Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! You can expand masks to overcome edge problems of SAM.
-- `2023/04/15`: [Feature] [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! You can enter text prompts to generate bounding boxes and segmentation masks.
-- `2023/04/15`: [Feature] API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
-- `2023/04/18`: [Feature] [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! You can copy SAM generated masks to ControlNet to do inpainting. Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to use it. ControlNet inpainting has far better performance compared to general-purposed models, and you do not need to download inpainting-specific models anymore.
-- `2023/04/24`: [Feature] Automatic segmentation support released! Functionalities with * require you to have [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) installed. Last commit: `724b4db`. This update includes support for 
+- `2023/04/10`: [v1.0.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.0.0) SAM extension released! You can click on the image to generate segmentation masks.
+- `2023/04/12`: [v1.0.1](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.0.1) Mask expansion released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)! You can expand masks to overcome edge problems of SAM.
+- `2023/04/15`: [v1.1.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.1.0) [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) support released! You can enter text prompts to generate bounding boxes and segmentation masks.
+- `2023/04/15`: [v1.2.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.2.0) API support released by [@jordan-barrett-jm](https://github.com/jordan-barrett-jm)!
+- `2023/04/18`: [v1.3.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.3.0) [ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) inpainting support released! You can copy SAM generated masks to ControlNet to do inpainting. Note that you **must** update [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) to use it. ControlNet inpainting has far better performance compared to general-purposed models, and you do not need to download inpainting-specific models anymore.
+- `2023/04/24`: [v1.4.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.4.0) Automatic segmentation support released! Functionalities with * require you to have [ControlNet extension](https://github.com/Mikubill/sd-webui-controlnet) installed. Last commit: `724b4db`. This update includes support for 
     - *[ControlNet V1.1](https://github.com/lllyasviel/ControlNet-v1-1-nightly) semantic segmentation
     - [EditAnything](https://github.com/sail-sg/EditAnything) un-semantic segmentation
     - Image layout generation (single image + batch process)
     - *Image masking with categories (single image + batch process)
     - *Inpaint not masked for ControlNet inpainting on txt2img panel
-- `2023/04/29`: [Feature] API has been completely refactored. You can access all features for **single image process** through API. API documentation has been moved to [wiki](https://github.com/continue-revolution/sd-webui-segment-anything/wiki/API).
-- `2023/05/22`: [Feature] [EditAnything](https://github.com/sail-sg/EditAnything) is ready to use! You can generate random segmentation and copy the output to EditAnything ControlNet.
-- `2023/05/29`: [Feature] You may now do SAM inference on CPU. This is for some MAC users who are not able to do SAM inference on GPU. I discourage other users from using this feature because it is significantly slower than CUDA. Last commit: `89a2213`.
+- `2023/04/29`: [v1.4.1](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.4.1) API has been completely refactored. You can access all features for **single image process** through API. API documentation has been moved to [wiki](https://github.com/continue-revolution/sd-webui-segment-anything/wiki/API).
+- `2023/05/22`: [v1.4.2](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.4.2) [EditAnything](https://github.com/sail-sg/EditAnything) is ready to use! You can generate random segmentation and copy the output to EditAnything ControlNet.
+- `2023/05/29`: [v1.4.3](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.4.3) You may now do SAM inference on CPU by checking "Use CPU for SAM". This is for some MAC users who are not able to do SAM inference on GPU. I discourage other users from using this feature because it is significantly slower than CUDA. Last commit: `89a2213`.
+- `2023/06/01`: [v1.5.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.5.0) You may now choose to use local GroundingDINO to bypass C++ problem. See [FAQ](#faq)-1 for more detail.
 
 ## TODO
 
@@ -36,7 +37,11 @@ There are already at least two great tutorials on how to use this extension. Che
 
 You should know the following before submitting an issue.
 
-1. I observe some common problems for Windows users:
+1. Due to the overwhemling complaints about GroundingDINO installment and the lack of substitution of similar high-performance text-to-bounding-box library, I decide to modify the source code of GroundingDINO and push to this repository. Starting from [v1.5.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.5.0), you can choose to use local GroundingDINO by checking `Use local groundingdino to bypass C++ problem` on `Settings/Segment Anything`. This change should solve all problems about ninja, pycocotools, _C and any other problems related to C++/CUDA compilation.
+
+    If you did not modify the setting described above, This script will firstly try to install GroundingDINO and check if your environment has successfully built the C++ dynamic library (the annoying `_C`). If so, this script will use the official implementation of GroundingDINO. This is to show respect to the authors of GroundingDINO. If the script failed to install GroundingDINO, it will use local GroundingDINO instead.
+
+    If you'd still like to resolve the install problem of GroundingDINO, I observe some common problems for Windows users:
     - `pycocotool`: [here](https://github.com/cocodataset/cocoapi/issues/415#issuecomment-627313816).
     - `_C`: [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/32#issuecomment-1513873296). DO NOT skip steps.
 
@@ -80,7 +85,7 @@ GroundingDINO has been supported in this extension. It has the following functio
 
 However, there are some existing problems with GroundingDINO:
 1. GroundingDINO will be install when you firstly use GroundingDINO features, instead of when you initiate the WebUI. Make sure that your terminal can have access to GitHub, otherwise you have to install GroundingDINO manually. GroundingDINO models will be automatically downloaded from [huggingFace](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main). If your terminal cannot visit HuggingFace, please manually download the model and put it under `${sd-webui-sam}/models/grounding-dino`.
-2. GroundingDINO requires your device to compile C++, which might take a long time and throw tons of exceptions. If you encounter `_C` problem, it's most probably because you did not install CUDA Toolkit. Follow steps decribed [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/32#issuecomment-1513873296). DO NOT skip steps. Otherwise, please go to [Grounded-SAM Issue Page](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and submit an issue there. Despite of this, you can still use this extension for point prompts->segmentation masks even if you cannot install GroundingDINO, don't worry.
+2. **If you want to use local groundingdino to bypass ALL the painful C++/CUDA/ninja/pycocotools problems, please read [FAQ](#faq)-1.** GroundingDINO requires your device to compile C++, which might take a long time and throw tons of exceptions. If you encounter `_C` problem, it's most probably because you did not install CUDA Toolkit. Follow steps decribed [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/32#issuecomment-1513873296). DO NOT skip steps. Otherwise, please go to [Grounded-SAM Issue Page](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and submit an issue there. Despite of this, you can still use this extension for point prompts->segmentation masks even if you cannot install GroundingDINO, don't worry.
 3. If you want to use point prompts, SAM can at most accept one bounding box. This extension will check if there are multiple bounding boxes. If multiple bounding boxes, this extension will disgard all point prompts; otherwise all point prompts will be effective. You may always select one bounding box you want.
 
 For more detail, check [How to Use](#how-to-use) and [Demo](#demo).
