@@ -13,24 +13,31 @@ body:
           required: true
   - type: checkboxes
     attributes:
-      label: Have you updated WebUI and this extension to the newest version?
-      description: Most people cannot use this extension because they are using an outdated webui. Before I have time to look into the reason, I ask that you update your WebUI and re-try. The most updated WebUI at least works well for LoRA and ControlNet.
+      label: Have you updated WebUI and this extension to the latest version?
+      description: Most people cannot use this extension because they are using an outdated WebUI. WebUI before 22bcc7be will not be supported.
       options:
-        - label: I have updated WebUI and this extension to the most up-to-date version
+        - label: I have updated WebUI and this extension to the latest version
           required: true
   - type: checkboxes
     attributes:
-      label: Do you understand that you should go to https://github.com/IDEA-Research/Grounded-Segment-Anything/issues if you cannot install GroundingDINO?
-      description: We can do very little help to people who are unable to install GroundingDINO. You should submit an issue in GroundingDINO or Grounded-SAM repository.
+      label: Do you understand that you should read the 1st item of https://github.com/continue-revolution/sd-webui-segment-anything#faq if you cannot install GroundingDINO?
+      description: I can do very little help to people who are unable to install GroundingDINO. However, you may choose to use the local GroundingDINO. Otherwise, you should submit an issue in GroundingDINO or Grounded-SAM repository.
       options:
         - label: My problem is not about installing GroundingDINO
           required: true
   - type: checkboxes
     attributes:
-      label: Do you know that you should use the newest ControlNet extension and enable external control if you want SAM extension to control ControlNet?
+      label: Do you understand that you should use the latest ControlNet extension and enable external control if you want SAM extension to control ControlNet?
       description: The pull request to ControlNet associated to this functionality was actually did by me... Before that PR, it was impossible to control ControlNet inpainting.
       options:
         - label: I have updated ControlNet extension and enabled "Allow other script to control this extension"
+          required: true
+  - type: checkboxes
+    attributes:
+      label: Do you understand that you should read the 2nd item of https://github.com/continue-revolution/sd-webui-segment-anything#faq if you observe problems like AttributeError: bool object has no attribute enabled and TypeError: bool object is not subscriptable?
+      description: Some extensions prevent me to reorder extension list inside the backend of WebUI. Following the step above can achieve the same effect as reordering extension list.
+      options:
+        - label: I have tried changing the extension directory name from sd-webui-segment-anything to a1111-sd-webui-segment-anything
           required: true
   - type: markdown
     attributes:
