@@ -258,6 +258,7 @@ def dino_batch_process(
     predictor = SamPredictor(sam)
     
     process_info = ""
+    install_success = True
     all_files = glob.glob(os.path.join(dino_batch_source_dir, "*"))
     for image_index, input_image_file in enumerate(all_files):
         print(f"Processing {image_index}/{len(all_files)} {input_image_file}")
