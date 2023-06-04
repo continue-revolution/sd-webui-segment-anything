@@ -470,9 +470,9 @@ def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image
 def ui_inpaint(is_img2img, max_cn):
     with FormRow():
         if is_img2img:
-            inpaint_upload_enable_label = "Copy to Inpaint Upload" + (" & ControlNet Inpainting" if max_cn > 0 else "")
+            inpaint_upload_enable_label = "Copy to Inpaint Upload" + (" & img2img ControlNet Inpainting" if max_cn > 0 else "")
         else:
-            inpaint_upload_enable_label = "Copy to ControlNet Inpainting" if max_cn > 0 else ""
+            inpaint_upload_enable_label = "Copy to txt2img ControlNet Inpainting" if max_cn > 0 else ""
         inpaint_upload_enable = gr.Checkbox(value=False, label=inpaint_upload_enable_label, visible=(len(inpaint_upload_enable_label) > 0))
         cnet_inpaint_invert = gr.Checkbox(value=False, label='ControlNet inpaint not masked', visible=((max_cn > 0) and not is_img2img))
         cnet_inpaint_idx = gr.Radio(value="0" if max_cn > 0 else None, choices=[str(i) for i in range(max_cn)], label='ControlNet Inpaint Index', type="index", visible=((max_cn > 0) and not is_img2img))
