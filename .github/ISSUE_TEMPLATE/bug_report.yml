@@ -37,7 +37,7 @@ body:
       label: Do you understand that you should read the 2nd item of https://github.com/continue-revolution/sd-webui-segment-anything#faq if you observe problems like AttributeError bool object has no attribute enabled and TypeError bool object is not subscriptable?
       description: Some extensions prevent me to reorder extension list inside the backend of WebUI. Following the step above can achieve the same effect as reordering extension list.
       options:
-        - label: I have tried changing the extension directory name from sd-webui-segment-anything to a1111-sd-webui-segment-anything
+        - label: My problem is not about such issue, otherwise I have tried changing the extension directory name from sd-webui-segment-anything to a1111-sd-webui-segment-anything
           required: true
   - type: markdown
     attributes:
