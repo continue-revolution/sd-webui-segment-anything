@@ -60,26 +60,38 @@ class SAMInpaintUnit:
 class SAMProcessUnit:
     def __init__(self, args: Tuple, is_img2img=False):
         self.is_img2img = is_img2img
-        sam_inpaint_args = args[:8]
-        args = args[8:]
-        self.sam_inpaint_unit = SAMInpaintUnit(sam_inpaint_args, is_img2img)
-        
-        self.cnet_seg_output_gallery: List[Dict] = None
-        self.cnet_seg_enable_copy: bool = False
-        self.cnet_seg_idx: int = 0
-        self.cnet_seg_gallery_input: int = 0
-        args = self.init_cnet_seg_process(args)
+        self.sam_inpaint_unit = SAMInpaintUnit(args, is_img2img)
 
+        args = args[8:]
+        self.cnet_seg_output_gallery: List[Dict]    = None
+        self.cnet_seg_enable_copy: bool             = False
+        self.cnet_seg_idx: int                      = 0
+        self.cnet_seg_gallery_input: int            = 0
+        self.init_cnet_seg_process(args)
+
+        args = args[4:]
         self.crop_inpaint_unit = SAMInpaintUnit(args, is_img2img)
+
+        args = args[8:]
+        self.cnet_upload_enable: bool                   = False
+        self.cnet_upload_num: int                       = 0
+        self.cnet_upload_img_inpaint: Image.Image       = None
+        self.cnet_upload_mask_inpaint: Image.Image      = None
+        self.init_cnet_upload_process(args)
         
         
     def init_cnet_seg_process(self, args):
-        csp_args    = args[:4]
-        self.cnet_seg_output_gallery    = csp_args[0]
-        self.cnet_seg_enable_copy       = csp_args[1]
-        self.cnet_seg_idx               = csp_args[2]
-        self.cnet_seg_gallery_input     = csp_args[3]
-        return args[4:]
+        self.cnet_seg_output_gallery    = args[0]
+        self.cnet_seg_enable_copy       = args[1]
+        self.cnet_seg_idx               = args[2]
+        self.cnet_seg_gallery_input     = args[3]
+    
+
+    def init_cnet_upload_process(self, args):
+        self.cnet_upload_enable         = args[0]
+        self.cnet_upload_num            = args[1]
+        self.cnet_upload_img_inpaint    = args[2] 
+        self.cnet_upload_mask_inpaint   = args[3]
 
     
     def set_process_attributes(self, p):
@@ -103,6 +115,10 @@ class SAMProcessUnit:
                 cnet_seg_gallery_index += self.cnet_seg_gallery_input
             self.set_p_value(p, 'control_net_input_image', self.cnet_seg_idx, 
                              Image.open(self.cnet_seg_output_gallery[cnet_seg_gallery_index]['name']))
+        
+        if self.cnet_upload_enable and self.cnet_upload_img_inpaint is not None and self.cnet_upload_mask_inpaint is not None:
+            self.set_p_value(p, 'control_net_input_image', self.cnet_upload_num, 
+                            {"image": self.cnet_upload_img_inpaint, "mask": self.cnet_upload_mask_inpaint.convert("L")})
 
 
     def set_p_value(self, p, attr: str, idx: int, v):

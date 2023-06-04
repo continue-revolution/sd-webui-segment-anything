@@ -733,6 +733,24 @@ class Script(scripts.Script):
                                                 crop_category_input, crop_batch_dilation_amt, crop_batch_source_dir, crop_batch_dest_dir, 
                                                 crop_batch_save_image, crop_batch_save_mask, crop_batch_save_image_with_mask, crop_batch_save_background, *auto_sam_config],
                                         outputs=[crop_batch_progress])
+                            
+                            
+                with gr.TabItem(label="Upload Mask to ControlNet Inpainting"):
+                    gr.Markdown("This panel is for those who want to upload mask to ControlNet inpainting. It is not part of the SAM feature. It might be removed someday when ControlNet support uploading image and mask. "
+                                "It serves as a temporarily workaround to overcome the unavailability of image with mask uploading feature in ControlNet extension.")
+                    with gr.Row():
+                        cnet_upload_enable = gr.Checkbox(value=False, label="Enable uploading manually created mask to SAM.")
+                        cnet_upload_num = gr.Radio(value="0", choices=[str(i) for i in range(max_cn_num())], label='ControlNet Inpaint Number', type="index")
+                    with gr.Column(visible=False) as cnet_upload_panel:
+                        cnet_upload_img_inpaint = gr.Image(label="Image for ControlNet Inpaint", show_label=False, source="upload", interactive=True, type="pil")
+                        cnet_upload_mask_inpaint = gr.Image(label="Mask for ControlNet Inpaint", source="upload", interactive=True, type="pil")
+                    cnet_upload_enable.change(
+                        fn=gr_show,
+                        inputs=[cnet_upload_enable],
+                        outputs=[cnet_upload_panel],
+                        show_progress=False)
+                    cnet_upload_process = (cnet_upload_enable, cnet_upload_num, cnet_upload_img_inpaint, cnet_upload_mask_inpaint)
+                    ui_process += cnet_upload_process
 
                 with gr.Row():
                     switch = gr.Button(value="Switch to Inpaint Upload")
