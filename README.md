@@ -19,6 +19,18 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 - `2023/05/22`: [v1.4.2](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.4.2) [EditAnything](https://github.com/sail-sg/EditAnything) is ready to use! You can generate random segmentation and copy the output to EditAnything ControlNet.
 - `2023/05/29`: [v1.4.3](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.4.3) You may now do SAM inference on CPU by checking "Use CPU for SAM". This is for some MAC users who are not able to do SAM inference on GPU. I discourage other users from using this feature because it is significantly slower than CUDA.
 - `2023/06/01`: [v1.5.0](https://github.com/continue-revolution/sd-webui-segment-anything/releases/tag/v1.5.0) You may now choose to use local GroundingDINO to bypass C++ problem. See [FAQ](#faq)-1 for more detail.
+- `2023/06/04`: [v2.0.0](https://github.com/continue-revolution/sd-webui-segment-anything/tree/v2) This is a developing v2 branch where the following features **might** be implemented. Some features that cannot be supported will be clearly stated in [FAQ](#faq)-5. It will be gradually merged into master branch, i.e. when I implement some features that I mostly want, I will merge.
+    - Editable bounding box. You may 
+        - add/delete/enlarge/shrink/move bounding box
+        - generate masks simply based on bounding box
+        - add point prompts for each bounding box
+        - add different positive/negative prompt for different bounding box for inpainting purpose
+
+        The [MultiDiffusion Upscalar](https://github.com/pkuliyi2015/multidiffusion-upscaler-for-automatic1111) extension is my main reference.
+    - [Track-Anything](https://github.com/gaomingqi/Track-Anything)
+    - Crop image according to mask
+    - Select colors for masked region and not masked region (single color, workaround for [FAQ](#faq)-5).
+    - Batch inpainting. Though probably [@OedoSoldier](https://github.com/OedoSoldier) has already implemented this feature in another extension. If so, I will not implement this feature inside my extension.
 
 ## FAQ
 
