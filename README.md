@@ -63,7 +63,7 @@ You should know the following before submitting an issue.
 
 Download this extension to `${sd-webui}/extensions` use whatever way you like (git clone or install from UI)
 
-Choose one or more of the models below and put them to `${sd-webui}/models/sam`. **Do not change model name, otherwise this extension may fail due to a bug inside segment anything.**
+Choose one or more of the models below and put them to `${sd-webui}/models/sam` or `${sd-webui-segment-anything}/models/sam` (Choose one, not both. Remove the former folder if you choose to use the latter.). **Do not change model name, otherwise this extension may fail due to a bug inside segment anything.**
 
 Three types of SAM models are available. [vit_h](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) is 2.56GB, [vit_l](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth) is 1.25GB, [vit_b](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) is 375MB. I myself tested vit_h on NVIDIA 3090 Ti which is good. If you encounter VRAM problem, you should switch to smaller models.
 
