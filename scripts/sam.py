@@ -571,7 +571,7 @@ class Script(scripts.Script):
                         dino_box_threshold = gr.Slider(label="GroundingDINO Box Threshold", minimum=0.0, maximum=1.0, value=0.3, step=0.001)
                         dino_preview_checkbox = gr.Checkbox(value=False, label="I want to preview GroundingDINO detection result and select the boxes I want.", elem_id=f"{tab_prefix}dino_preview_checkbox")
                         with gr.Column(visible=False) as dino_preview:
-                            dino_preview_boxes = gr.Image(label="Image for GroundingDINO", type="pil", image_mode="RGBA")
+                            dino_preview_boxes = gr.Image(show_label=False, type="pil", image_mode="RGBA")
                             dino_preview_boxes_button = gr.Button(value="Generate bounding box", elem_id=f"{tab_prefix}dino_run_button")
                             dino_preview_boxes_selection = gr.CheckboxGroup(label="Select your favorite boxes: ", elem_id=f"{tab_prefix}dino_preview_boxes_selection")
                             dino_preview_result = gr.Text(value="", label="GroundingDINO preview status", visible=False)
