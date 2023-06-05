@@ -1,8 +1,5 @@
 # Segment Anything for Stable Diffusion WebUI
 
-URGENT: The current version (v1.5.1) of this extension is not compatible with the latest version (v1.3.2) of Stable Diffusion WebUI. This is because of the gradio version (3.32.0). I will try to resolve the problem as soon as possible. 
-If you meet problem similar to `No such file or directory: '/tmp/gradio/tmpgshj4x4l.png'`, it is due to the webui version problem. Please revert to webui v1.3.1 via `git checkout v1.3.1` on your terminal, inside the webui folder. This notice will disappear once the problem is resolved.
-
 This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) and [Mikubill ControlNet Extension](https://github.com/Mikubill/sd-webui-controlnet) with [segment anything](https://github.com/facebookresearch/segment-anything/) and [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) to enhance Stable Diffusion/ControlNet inpainting, enhance ControlNet semantic segmentation, automate image matting and create LoRA/LyCORIS training set.
 
 ## News
