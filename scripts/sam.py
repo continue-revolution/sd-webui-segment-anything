@@ -126,7 +126,7 @@ def init_sam_model(sam_model_name):
         sam_model_cache[sam_model_name] = load_sam_model(sam_model_name)
         return sam_model_cache[sam_model_name]
     else:
-        Exception(
+        raise Exception(
             f"{sam_model_name} not found, please download model to models/sam.")
 
 
