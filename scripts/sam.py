@@ -203,7 +203,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
     predictor = SamPredictor(sam)
     predictor.set_image(image_np_rgb)
     if dino_enabled and boxes_filt.shape[0] > 1:
-        sam_predict_status = f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts disgarded"
+        sam_predict_status = f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts discarded"
         print(sam_predict_status)
         transformed_boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
         masks, _, _ = predictor.predict_torch(
