@@ -28,6 +28,7 @@ This extension aim for connecting [AUTOMATIC1111 Stable Diffusion WebUI](https:/
 
         The [MultiDiffusion Upscalar](https://github.com/pkuliyi2015/multidiffusion-upscaler-for-automatic1111) extension is my main reference.
     - [Track-Anything](https://github.com/gaomingqi/Track-Anything)
+    - [SAM-HQ](https://github.com/SysCV/SAM-HQ)
     - Crop image according to mask
     - Select colors for masked region and not masked region (single color, workaround for [FAQ](#faq)-5).
     - Batch inpainting. Though probably [@OedoSoldier](https://github.com/OedoSoldier) has already implemented this feature in another extension. If so, I will not implement this feature inside my extension.
