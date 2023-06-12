@@ -7,13 +7,13 @@ from collections import OrderedDict
 import numpy as np
 import torch
 import cv2
-from segment_anything import SamAutomaticMaskGenerator
+from sam_hq.automatic import SamAutomaticMaskGeneratorHQ
 from modules import scripts, shared
 from modules.paths import extensions_dir
 from modules.devices import torch_gc
 
 
-global_sam: SamAutomaticMaskGenerator = None
+global_sam: SamAutomaticMaskGeneratorHQ = None
 sem_seg_cache = OrderedDict()
 sam_annotator_dir = os.path.join(scripts.basedir(), "annotator")
 original_uniformer_inference_segmentor = None
@@ -303,7 +303,7 @@ def register_auto_sam(sam,
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, auto_sam_output_mode):
     global global_sam
-    global_sam = SamAutomaticMaskGenerator(
+    global_sam = SamAutomaticMaskGeneratorHQ(
         sam, auto_sam_points_per_side, auto_sam_points_per_batch, 
         auto_sam_pred_iou_thresh, auto_sam_stability_score_thresh, 
         auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 

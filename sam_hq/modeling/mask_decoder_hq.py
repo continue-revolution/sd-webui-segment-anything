@@ -11,7 +11,7 @@ from torch.nn import functional as F
 
 from typing import List, Tuple, Type
 
-from .common import LayerNorm2d
+from segment_anything.modeling.common import LayerNorm2d
 
 
 class MaskDecoderHQ(nn.Module):
@@ -103,8 +103,8 @@ class MaskDecoderHQ(nn.Module):
         sparse_prompt_embeddings: torch.Tensor,
         dense_prompt_embeddings: torch.Tensor,
         multimask_output: bool,
-        hq_token_only: bool,
-        interm_embeddings: torch.Tensor,
+        hq_token_only: bool = False,
+        interm_embeddings: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Predict masks given image and prompt embeddings.
@@ -124,7 +124,7 @@ class MaskDecoderHQ(nn.Module):
         vit_features = interm_embeddings[0].permute(0, 3, 1, 2) # early-layer ViT feature, after 1st global attention block in ViT
         hq_features = self.embedding_encoder(image_embeddings) + self.compress_vit_feat(vit_features)
 
-        masks, iou_pred = self.predict_masks(
+        masks, iou_pred, masks_hq = self.predict_masks(
             image_embeddings=image_embeddings,
             image_pe=image_pe,
             sparse_prompt_embeddings=sparse_prompt_embeddings,
@@ -133,21 +133,25 @@ class MaskDecoderHQ(nn.Module):
         )
 
         # Select the correct mask or masks for output
+        # if multimask_output:
+        #     # mask with highest score
+        #     mask_slice = slice(1,self.num_mask_tokens-1)
+        #     iou_pred = iou_pred[:, mask_slice]
+        #     iou_pred, max_iou_idx = torch.max(iou_pred,dim=1)
+        #     iou_pred = iou_pred.unsqueeze(1)
+        #     masks_multi = masks[:, mask_slice, :, :]
+        #     masks_sam = masks_multi[torch.arange(masks_multi.size(0)),max_iou_idx].unsqueeze(1)
+        # else:
+        #     # single mask output, default
+        #     mask_slice = slice(0, 1)
+        #     iou_pred = iou_pred[:,mask_slice]
+        #     masks_sam = masks[:,mask_slice]
         if multimask_output:
-            # mask with highest score
-            mask_slice = slice(1,self.num_mask_tokens-1)
-            iou_pred = iou_pred[:, mask_slice]
-            iou_pred, max_iou_idx = torch.max(iou_pred,dim=1)
-            iou_pred = iou_pred.unsqueeze(1)
-            masks_multi = masks[:, mask_slice, :, :]
-            masks_sam = masks_multi[torch.arange(masks_multi.size(0)),max_iou_idx].unsqueeze(1)
+            mask_slice = slice(1, None)
         else:
-            # singale mask output, default
             mask_slice = slice(0, 1)
-            iou_pred = iou_pred[:,mask_slice]
-            masks_sam = masks[:,mask_slice]
-
-        masks_hq = masks[:,slice(self.num_mask_tokens-1, self.num_mask_tokens)]
+        masks_sam = masks[:, mask_slice, :, :]
+        iou_pred = iou_pred[:, mask_slice]
         if hq_token_only:
             masks = masks_hq
         else:
@@ -198,11 +202,11 @@ class MaskDecoderHQ(nn.Module):
 
         masks_sam = (hyper_in[:,:self.num_mask_tokens-1] @ upscaled_embedding_sam.view(b, c, h * w)).view(b, -1, h, w)
         masks_sam_hq = (hyper_in[:,self.num_mask_tokens-1:] @ upscaled_embedding_hq.view(b, c, h * w)).view(b, -1, h, w)
-        masks = torch.cat([masks_sam,masks_sam_hq],dim=1)
+        # masks = torch.cat([masks_sam,masks_sam_hq],dim=1)
         # Generate mask quality predictions
         iou_pred = self.iou_prediction_head(iou_token_out)
 
-        return masks, iou_pred
+        return masks_sam, iou_pred, masks_sam_hq
 
 
 # Lightly adapted from

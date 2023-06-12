@@ -15,8 +15,8 @@ from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img, StableDiffusionProcessing
 from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
-from segment_anything import SamPredictor as SamPredictorBase, sam_model_registry
-from segment_anything_hq import SamPredictor as SamPredictorHQ, sam_model_registry as sam_model_registry_hq
+from sam_hq.predictor import SamPredictorHQ
+from sam_hq.build_sam_hq import sam_model_registry
 from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
 from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal, categorical_mask_image
 from scripts.process_params import SAMProcessUnit, max_cn_num
@@ -29,8 +29,6 @@ sd_sam_model_dir = os.path.join(models_path, "sam")
 sam_model_dir = sd_sam_model_dir if os.path.exists(sd_sam_model_dir) else scripts_sam_model_dir 
 sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
 sam_device = device
-
-is_hq = False
 
 
 txt2img_width: gr.Slider = None
@@ -57,12 +55,6 @@ def show_masks(image_np, masks: np.ndarray, alpha=0.5):
         image[mask] = image[mask] * (1 - alpha) + 255 * color.reshape(1, 1, -1) * alpha
     return image.astype(np.uint8)
 
-def SamPredictor(sam_model):
-    if is_hq:
-        return SamPredictorHQ(sam_model)
-    else:
-        return SamPredictorBase(sam_model)
-
 
 def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     print("Dilation Amount: ", dilation_amt)
@@ -80,17 +72,12 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
 
 
 def load_sam_model(sam_checkpoint):
-    global is_hq
-    model_type = '_'.join(sam_checkpoint.split('_')[1:-1])
-    sam_checkpoint = os.path.join(sam_model_dir, sam_checkpoint)
+    model_type = sam_checkpoint.split('.')[0]
+    if 'hq' not in model_type:
+        model_type = '_'.join(model_type.split('_')[:-1])
+    sam_checkpoint_path = os.path.join(sam_model_dir, sam_checkpoint)
     torch.load = unsafe_torch_load
-    # 如果包含hq，则使用hq版本的sam
-    if 'hq' in sam_checkpoint:
-        sam = sam_model_registry_hq[model_type.replace("hq_","")](checkpoint=sam_checkpoint)
-        is_hq = True
-    else:
-        sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-        is_hq = False
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint_path)
     sam.to(device=sam_device)
     sam.eval()
     torch.load = load
@@ -216,7 +203,7 @@ def sam_predict(sam_model_name, input_image, positive_points, negative_points,
             boxes_filt = boxes_filt[valid_indices]
     sam = init_sam_model(sam_model_name)
     print(f"Running SAM Inference {image_np_rgb.shape}")
-    predictor = SamPredictor(sam)
+    predictor = SamPredictorHQ(sam, 'hq' in sam_model_name)
     predictor.set_image(image_np_rgb)
     if dino_enabled and boxes_filt.shape[0] > 1:
         sam_predict_status = f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts discarded"
@@ -271,7 +258,7 @@ def dino_batch_process(
         return "Please add text prompts to generate masks"
     print("Start batch processing")
     sam = init_sam_model(batch_sam_model_name)
-    predictor = SamPredictor(sam)
+    predictor = SamPredictorHQ(sam, 'hq' in batch_sam_model_name)
     
     process_info = ""
     install_success = True
@@ -323,7 +310,8 @@ def cnet_seg(
     print(f"Start semantic segmentation with processor {cnet_seg_processor}")
     auto_sam_output_mode = "coco_rle" if "seg" in cnet_seg_processor else "binary_mask"
     sam = load_sam_model(sam_model_name)
-    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    predictor = SamPredictorHQ(sam, 'hq' in sam_model_name)
+    register_auto_sam(predictor, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, auto_sam_output_mode)
@@ -342,7 +330,8 @@ def image_layout(
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
     print("Start processing image layout")
     sam = load_sam_model(sam_model_name)
-    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    predictor = SamPredictorHQ(sam, 'hq' in sam_model_name)
+    register_auto_sam(predictor, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "binary_mask")
@@ -362,7 +351,8 @@ def categorical_mask(
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
     print("Start processing categorical mask")
     sam = load_sam_model(sam_model_name)
-    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    predictor = SamPredictorHQ(sam, 'hq' in sam_model_name)
+    register_auto_sam(predictor, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "coco_rle")
@@ -389,7 +379,8 @@ def categorical_mask_batch(
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area):
     print("Start processing categorical mask in batch")
     sam = load_sam_model(sam_model_name)
-    register_auto_sam(sam, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
+    predictor = SamPredictorHQ(sam, 'hq' in sam_model_name)
+    register_auto_sam(predictor, auto_sam_points_per_side, auto_sam_points_per_batch, auto_sam_pred_iou_thresh, 
     auto_sam_stability_score_thresh, auto_sam_stability_score_offset, auto_sam_box_nms_thresh, 
     auto_sam_crop_n_layers, auto_sam_crop_nms_thresh, auto_sam_crop_overlap_ratio, 
     auto_sam_crop_n_points_downscale_factor, auto_sam_min_mask_region_area, "coco_rle")
