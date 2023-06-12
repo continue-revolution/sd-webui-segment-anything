@@ -15,7 +15,8 @@ from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img, StableDiffusionProcessing
 from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
-from segment_anything import SamPredictor, sam_model_registry
+from segment_anything import SamPredictor as SamPredictorBase, sam_model_registry
+from segment_anything_hq import SamPredictor as SamPredictorHQ, sam_model_registry as sam_model_registry_hq
 from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
 from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal, categorical_mask_image
 from scripts.process_params import SAMProcessUnit, max_cn_num
@@ -28,6 +29,8 @@ sd_sam_model_dir = os.path.join(models_path, "sam")
 sam_model_dir = sd_sam_model_dir if os.path.exists(sd_sam_model_dir) else scripts_sam_model_dir 
 sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
 sam_device = device
+
+is_hq = False
 
 
 txt2img_width: gr.Slider = None
@@ -54,6 +57,12 @@ def show_masks(image_np, masks: np.ndarray, alpha=0.5):
         image[mask] = image[mask] * (1 - alpha) + 255 * color.reshape(1, 1, -1) * alpha
     return image.astype(np.uint8)
 
+def SamPredictor(sam_model):
+    if is_hq:
+        return SamPredictorHQ(sam_model)
+    else:
+        return SamPredictorBase(sam_model)
+
 
 def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
     print("Dilation Amount: ", dilation_amt)
@@ -71,10 +80,17 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
 
 
 def load_sam_model(sam_checkpoint):
+    global is_hq
     model_type = '_'.join(sam_checkpoint.split('_')[1:-1])
     sam_checkpoint = os.path.join(sam_model_dir, sam_checkpoint)
     torch.load = unsafe_torch_load
-    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    # 如果包含hq，则使用hq版本的sam
+    if 'hq' in sam_checkpoint:
+        sam = sam_model_registry_hq[model_type.replace("hq_","")](checkpoint=sam_checkpoint)
+        is_hq = True
+    else:
+        sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+        is_hq = False
     sam.to(device=sam_device)
     sam.eval()
     torch.load = load
