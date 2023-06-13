@@ -68,7 +68,7 @@ Choose one or more of the models below and put them to `${sd-webui}/models/sam` 
 
 Three types of SAM models are available. [vit_h](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) is 2.56GB, [vit_l](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth) is 1.25GB, [vit_b](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) is 375MB. I myself tested vit_h on NVIDIA 3090 Ti which is good. If you encounter VRAM problem, you should switch to smaller models.
 
-You may also choose to use [SAM-HQ](https://github.com/SysCV/sam-hq). [hq_vit_h](https://drive.google.com/file/d/1qobFYrI4eyIANfBSmYcGuWRaSIXfMOQ8/view?usp=sharing) is 2.4G, [hq_vit_l](https://drive.google.com/file/d/1Uk17tDKX1YAKas5knI4y9ZJCo0lRVL0G/view?usp=sharing) is 1.2G, [hq_vit_b](https://drive.google.com/file/d/11yExZLOve38kRZPfRx_MRxfIAKmfMY47/view?usp=sharing) is 362M.
+You may also choose to use [SAM-HQ](https://github.com/SysCV/sam-hq). [hq_vit_h](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_h.pth) is 2.57G, [hq_vit_l](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_l.pth) is 1.25G, [hq_vit_b](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_b.pth) is 379M.
 
 GroundingDINO packages, GroundingDINO models and ControlNet annotator models will be automatically installed the first time you use them.
 
