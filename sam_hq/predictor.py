@@ -1,9 +1,8 @@
 from typing import Optional, Tuple
-import numpy as np
 import torch
 from segment_anything import SamPredictor
 from segment_anything.modeling import Sam
-
+from modules.devices import get_device_for
 
 class SamPredictorHQ(SamPredictor):
 
@@ -11,6 +10,7 @@ class SamPredictorHQ(SamPredictor):
         self,
         sam_model: Sam,
         sam_is_hq: bool = False,
+        sam_device: str = None,
     ) -> None:
         """
         Uses SAM to calculate the image embedding for an image, and then
@@ -21,7 +21,14 @@ class SamPredictorHQ(SamPredictor):
         """
         super().__init__(sam_model=sam_model)
         self.is_hq = sam_is_hq
-    
+        self.sam_device = get_device_for('sam') if sam_device is None else sam_device
+        self.model = self.model.eval().to(self.sam_device)
+
+
+    def unload_model(self):
+        if self.model is not None:
+          self.model.cpu()
+
 
     @torch.no_grad()
     def set_torch_image(
