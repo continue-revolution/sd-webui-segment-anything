@@ -1,6 +1,5 @@
 from typing import Tuple, List, Dict
-from PIL import Image, ImageOps, ImageEnhance, ImageFilter
-import numpy as np
+from PIL import Image, ImageOps
 from modules import shared
 
 

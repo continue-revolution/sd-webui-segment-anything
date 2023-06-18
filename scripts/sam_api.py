@@ -21,7 +21,7 @@ def decode_to_pil(image):
     elif type(image) is np.ndarray:
         return Image.fromarray(image)
     else:
-        Exception("Not an image")
+        raise Exception("Not an image")
 
 
 def encode_to_base64(image):
@@ -33,7 +33,7 @@ def encode_to_base64(image):
         pil = Image.fromarray(image)
         return encode_pil_to_base64(pil).decode()
     else:
-        Exception("Invalid type")
+        raise Exception("Invalid type")
 
 
 def sam_api(_: gr.Blocks, app: FastAPI):    

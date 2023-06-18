@@ -17,9 +17,9 @@ from modules.devices import device, torch_gc, cpu
 from modules.paths import models_path
 from sam_hq.predictor import SamPredictorHQ
 from sam_hq.build_sam_hq import sam_model_registry
-from scripts.dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
-from scripts.auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal, categorical_mask_image
-from scripts.process_params import SAMProcessUnit, max_cn_num
+from scripts.sam_dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
+from scripts.sam_auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal, categorical_mask_image
+from scripts.sam_process import SAMProcessUnit, max_cn_num
 
 
 refresh_symbol = '\U0001f504'       # 🔄
