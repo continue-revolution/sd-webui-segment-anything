@@ -1,2 +1,3 @@
 segment_anything
 supervision
+ultralytics

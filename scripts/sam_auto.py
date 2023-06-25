@@ -1,3 +1,4 @@
+from typing import List, Tuple
 import os
 import glob
 import copy
@@ -14,12 +15,12 @@ class AutoSAM:
         self.auto_sam: SamAutomaticMaskGeneratorHQ = None
 
 
-    def blend_image_and_seg(self, image: np.ndarray, seg: np.ndarray, alpha=0.5):
+    def blend_image_and_seg(self, image: np.ndarray, seg: np.ndarray, alpha=0.5) -> Image.Image:
         image_blend = image * (1 - alpha) + np.array(seg) * alpha
         return Image.fromarray(image_blend.astype(np.uint8))
 
 
-    def strengthen_semmantic_seg(self, class_ids: np.ndarray, img: np.ndarray):
+    def strengthen_semmantic_seg(self, class_ids: np.ndarray, img: np.ndarray) -> np.ndarray:
         logger.info("AutoSAM strengthening semantic segmentation")
         import pycocotools.mask as maskUtils
         semantc_mask = copy.deepcopy(class_ids)
@@ -39,11 +40,10 @@ class AutoSAM:
         return semantc_mask
 
 
-    def random_segmentation(self, img: Image.Image):
+    def random_segmentation(self, img: Image.Image) -> Tuple[List[Image.Image], str]:
         logger.info("AutoSAM generating random segmentation for EditAnything")
         img_np = np.array(img.convert("RGB"))
         annotations = self.auto_sam.generate(img_np)
-        # annotations = sorted(annotations, key=lambda x: x['area'], reverse=True)
         logger.info(f"AutoSAM generated {len(annotations)} masks")
         H, W, _ = img_np.shape
         color_map = np.zeros((H, W, 3), dtype=np.uint8)
@@ -65,7 +65,7 @@ class AutoSAM:
             "Random segmentation done. Left above (0) is blended image, right above (1) is random segmentation, left below (2) is Edit-Anything control input."
 
 
-    def layer_single_image(self, layout_input_image: Image.Image, layout_output_path: str):
+    def layer_single_image(self, layout_input_image: Image.Image, layout_output_path: str) -> None:
         img_np = np.array(layout_input_image.convert("RGB"))
         annotations = self.auto_sam.generate(img_np)
         logger.info(f"AutoSAM generated {len(annotations)} annotations")
@@ -80,7 +80,7 @@ class AutoSAM:
         img_np.save(os.path.join(layout_output_path, "leftover.png"))
 
 
-    def image_layer(self, layout_input_image_or_path, layout_output_path: str):
+    def image_layer(self, layout_input_image_or_path, layout_output_path: str) -> str:
         if isinstance(layout_input_image_or_path, str):
             logger.info("Image layer division batch processing")
             all_files = glob.glob(os.path.join(layout_input_image_or_path, "*"))
@@ -101,7 +101,7 @@ class AutoSAM:
 
 
     def semantic_segmentation(self, input_image: Image.Image, annotator_name: str, processor_res: int, 
-                              use_pixel_perfect: bool, resize_mode: int, target_W: int, target_H: int):
+                              use_pixel_perfect: bool, resize_mode: int, target_W: int, target_H: int) -> Tuple[List[Image.Image], str]:
         if input_image is None:
             return [], "No input image."
         if "seg" in annotator_name:
@@ -131,8 +131,8 @@ class AutoSAM:
             return self.random_segmentation(input_image)
 
 
-    def categorical_mask_image(self, crop_processor: str, crop_processor_res: int, crop_category_input: str, crop_input_image: Image.Image,
-                               crop_pixel_perfect: bool, crop_resize_mode: int, target_W: int, target_H: int):
+    def categorical_mask_image(self, crop_processor: str, crop_processor_res: int, crop_category_input: List[int], crop_input_image: Image.Image,
+                               crop_pixel_perfect: bool, crop_resize_mode: int, target_W: int, target_H: int) -> Tuple[np.ndarray, Image.Image]:
         if crop_input_image is None:
             return "No input image."
         try:
@@ -144,7 +144,7 @@ class AutoSAM:
             }
         except:
             return [], "ControlNet extension not found."
-        filter_classes = crop_category_input.split('+')
+        filter_classes = crop_category_input
         if len(filter_classes) == 0:
             return "No class selected."
         try:
@@ -163,7 +163,7 @@ class AutoSAM:
             original_semantic = oneformers[dataset](crop_input_image_np, crop_processor_res)
         sam_semantic = self.strengthen_semmantic_seg(np.array(original_semantic), crop_input_image_np)
         mask = np.zeros(sam_semantic.shape, dtype=np.bool_)
-        from scripts.semantic.category import SEMANTIC_CATEGORIES
+        from scripts.sam_config import SEMANTIC_CATEGORIES
         for i in filter_classes:
             mask[np.equal(sam_semantic, SEMANTIC_CATEGORIES[crop_processor][i])] = True
         return mask, crop_input_image_copy

@@ -7,23 +7,31 @@ from torch.nn import Module
 
 import m2ms
 from modules.devices import get_device_for
+from scripts.sam_state import sam_extension_dir
+from scripts.sam_log import logger
 
 class SamM2M(Module):
-    def __init__(self, m2m='sam_decoder_deep', ckpt_path=None, device=None):
+
+    def __init__(self):
         super(SamM2M, self).__init__()
+        self.m2m_device = get_device_for("sam")
+
+
+    def load_m2m(self, m2m='sam_decoder_deep', ckpt_path=None):
         if m2m not in m2ms.__all__:
             raise NotImplementedError(f"Unknown M2M {m2m}")
         self.m2m: Module = m2ms.__dict__[m2m](nc=256)
         if ckpt_path is None:
-            ckpt_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models/mam')
+            ckpt_path = os.path.join(sam_extension_dir, 'models/mam')
         try:
-            state_dict = torch.load(os.path.join(ckpt_path, 'mam.pth'), map_location=device)
+            logger.info(f"Loading mam from path: {ckpt_path}/mam.pth to device: {self.m2m_device}")
+            state_dict = torch.load(os.path.join(ckpt_path, 'mam.pth'), map_location=self.m2m_device)
         except:
-            state_dict = torch.hub.load_state_dict_from_url(
-                "https://huggingface.co/conrevo/Matting-Anything-diff/resolve/main/mam.pth", ckpt_path, device)
+            mam_url = "https://huggingface.co/conrevo/SAM4WebUI-Extension-Models/resolve/main/mam.pth"
+            logger.info(f"Loading mam from url: {mam_url} to path: {ckpt_path}, device: {self.m2m_device}")
+            state_dict = torch.hub.load_state_dict_from_url(mam_url, ckpt_path, self.m2m_device)
         self.m2m.load_state_dict(state_dict)
         self.m2m.eval()
-        self.m2m_device = get_device_for("sam") if device is None else device
 
 
     def forward(self, feas, image, masks):
@@ -32,5 +40,11 @@ class SamM2M(Module):
         return pred
 
 
+    def clear(self):
+        del self.m2m
+        self.m2m = None
+
+
     def unload_model(self):
-        self.m2m.to('cpu')
+        if self.m2m is not None:
+            self.m2m.cpu()

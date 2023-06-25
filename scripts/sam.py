@@ -7,29 +7,18 @@ from PIL import Image
 import torch
 import gradio as gr
 from collections import OrderedDict
-from scipy.ndimage import binary_dilation
 from modules import scripts, shared, script_callbacks
 from modules.ui import gr_show
 from modules.ui_components import FormRow
 from modules.safe import unsafe_torch_load, load
 from modules.processing import StableDiffusionProcessingImg2Img, StableDiffusionProcessing
 from modules.devices import device, torch_gc, cpu
-from modules.paths import models_path
+
 from sam_hq.predictor import SamPredictorHQ
 from sam_hq.build_sam_hq import sam_model_registry
 from scripts.sam_dino import dino_model_list, dino_predict_internal, show_boxes, clear_dino_cache, dino_install_issue_text
 from scripts.sam_auto import clear_sem_sam_cache, register_auto_sam, semantic_segmentation, sem_sam_garbage_collect, image_layer_internal, categorical_mask_image
 from scripts.sam_process import SAMProcessUnit, max_cn_num
-
-
-refresh_symbol = '\U0001f504'       # 🔄
-sam_model_cache = OrderedDict()
-scripts_sam_model_dir = os.path.join(scripts.basedir(), "models/sam") 
-sd_sam_model_dir = os.path.join(models_path, "sam")
-sam_model_dir = sd_sam_model_dir if os.path.exists(sd_sam_model_dir) else scripts_sam_model_dir 
-sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
-sam_device = device
-
 
 txt2img_width: gr.Slider = None
 txt2img_height: gr.Slider = None
@@ -45,43 +34,6 @@ class ToolButton(gr.Button, gr.components.FormComponent):
 
     def get_block_name(self):
         return "button"
-        
-
-def show_masks(image_np, masks: np.ndarray, alpha=0.5):
-    image = copy.deepcopy(image_np)
-    np.random.seed(0)
-    for mask in masks:
-        color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
-        image[mask] = image[mask] * (1 - alpha) + 255 * color.reshape(1, 1, -1) * alpha
-    return image.astype(np.uint8)
-
-
-def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
-    print("Dilation Amount: ", dilation_amt)
-    if isinstance(mask_gallery, list):
-        mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
-    else:
-        mask_image = mask_gallery
-    binary_img = np.array(mask_image.convert('1'))
-    if dilation_amt:
-        mask_image, binary_img = dilate_mask(binary_img, dilation_amt)
-    blended_image = Image.fromarray(show_masks(np.array(input_image), binary_img.astype(np.bool_)[None, ...]))
-    matted_image = np.array(input_image)
-    matted_image[~binary_img] = np.array([0, 0, 0, 0])
-    return [blended_image, mask_image, Image.fromarray(matted_image)]
-
-
-def load_sam_model(sam_checkpoint):
-    model_type = sam_checkpoint.split('.')[0]
-    if 'hq' not in model_type:
-        model_type = '_'.join(model_type.split('_')[:-1])
-    sam_checkpoint_path = os.path.join(sam_model_dir, sam_checkpoint)
-    torch.load = unsafe_torch_load
-    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint_path)
-    sam.to(device=sam_device)
-    sam.eval()
-    torch.load = load
-    return sam
 
 
 def clear_sam_cache():
@@ -101,86 +53,6 @@ def garbage_collect(sam):
         sam.to(cpu)
     gc.collect()
     torch_gc()
-
-
-def refresh_sam_models(*inputs):
-    global sam_model_list
-    sam_model_list = [f for f in os.listdir(sam_model_dir) if os.path.isfile(
-        os.path.join(sam_model_dir, f)) and f.split('.')[-1] != 'txt']
-    dd = inputs[0]
-    if dd in sam_model_list:
-        selected = dd
-    elif len(sam_model_list) > 0:
-        selected = sam_model_list[0]
-    else:
-        selected = None
-    return gr.Dropdown.update(choices=sam_model_list, value=selected)
-
-
-def init_sam_model(sam_model_name):
-    print(f"Initializing SAM to {sam_device}")
-    if sam_model_name in sam_model_cache:
-        sam = sam_model_cache[sam_model_name]
-        if shared.cmd_opts.lowvram or (str(sam_device) not in str(sam.device)):
-            sam.to(device=sam_device)
-        return sam
-    elif sam_model_name in sam_model_list:
-        clear_sam_cache()
-        sam_model_cache[sam_model_name] = load_sam_model(sam_model_name)
-        return sam_model_cache[sam_model_name]
-    else:
-        raise Exception(
-            f"{sam_model_name} not found, please download model to models/sam.")
-
-
-def dilate_mask(mask, dilation_amt):
-    x, y = np.meshgrid(np.arange(dilation_amt), np.arange(dilation_amt))
-    center = dilation_amt // 2
-    dilation_kernel = ((x - center)**2 + (y - center)**2 <= center**2).astype(np.uint8)
-    dilated_binary_img = binary_dilation(mask, dilation_kernel)
-    dilated_mask = Image.fromarray(dilated_binary_img.astype(np.uint8) * 255)
-    return dilated_mask, dilated_binary_img
-
-
-def create_mask_output(image_np, masks, boxes_filt):
-    print("Creating output image")
-    mask_images, masks_gallery, matted_images = [], [], []
-    boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
-    for mask in masks:
-        masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
-        blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
-        mask_images.append(Image.fromarray(blended_image))
-        image_np_copy = copy.deepcopy(image_np)
-        image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
-        matted_images.append(Image.fromarray(image_np_copy))
-    return mask_images + masks_gallery + matted_images
-
-
-def create_mask_batch_output(
-    input_image_file, dino_batch_dest_dir, 
-    image_np, masks, boxes_filt, batch_dilation_amt, 
-    dino_batch_save_image, dino_batch_save_mask, dino_batch_save_background, dino_batch_save_image_with_mask):
-    print("Creating batch output image")
-    filename, ext = os.path.splitext(os.path.basename(input_image_file))
-    ext = ".png" # JPEG not compatible with RGBA
-    for idx, mask in enumerate(masks):
-        blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
-        merged_mask = np.any(mask, axis=0)
-        if dino_batch_save_background:
-            merged_mask = ~merged_mask
-        if batch_dilation_amt:
-            _, merged_mask = dilate_mask(merged_mask, batch_dilation_amt)
-        image_np_copy = copy.deepcopy(image_np)
-        image_np_copy[~merged_mask] = np.array([0, 0, 0, 0])
-        if dino_batch_save_image:
-            output_image = Image.fromarray(image_np_copy)
-            output_image.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_output{ext}"))
-        if dino_batch_save_mask:
-            output_mask = Image.fromarray(merged_mask)
-            output_mask.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_mask{ext}"))
-        if dino_batch_save_image_with_mask:
-            output_blend = Image.fromarray(blended_image)
-            output_blend.save(os.path.join(dino_batch_dest_dir, f"{filename}_{idx}_blend{ext}"))
 
 
 def sam_predict(sam_model_name, input_image, positive_points, negative_points,
@@ -812,6 +684,7 @@ def on_after_component(component, **_kwargs):
 def on_ui_settings():
     section = ('segment_anything', "Segment Anything")
     shared.opts.add_option("sam_use_local_groundingdino", shared.OptionInfo(False, "Use local groundingdino to bypass C++ problem", section=section))
+    shared.opts.add_option("sam_model_path", shared.OptionInfo("", "Specify SAM model path", section=section))
 
 
 script_callbacks.on_ui_settings(on_ui_settings)
