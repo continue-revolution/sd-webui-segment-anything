@@ -9,7 +9,7 @@ from modules.devices import device, torch_gc
 from scripts.sam_log import logger
 import local_groundingdino
 
-class GroundingDINO4SAM:
+class Detection:
 
     def __init__(self) -> None:
         self.dino_model = None
@@ -142,7 +142,7 @@ class GroundingDINO4SAM:
         return boxes_filt.cpu()
 
 
-    def dino_predict_internal(self, input_image: Image.Image, dino_model_name: str, text_prompt: str, box_threshold: float) -> Tuple[torch.Tensor, bool]:
+    def dino_predict(self, input_image: Image.Image, dino_model_name: str, text_prompt: str, box_threshold: float) -> Tuple[torch.Tensor, bool]:
         install_success = self._install_goundingdino()
         logger.info("Running GroundingDINO Inference")
         dino_image = self._load_dino_image(input_image.convert("RGB"), install_success)

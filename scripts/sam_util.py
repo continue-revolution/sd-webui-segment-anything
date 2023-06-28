@@ -40,7 +40,7 @@ def dilate_mask(mask: np.ndarray, dilation_amt: int) -> Tuple[Image.Image, np.nd
     return dilated_mask, dilated_binary_img
 
 
-def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
+def update_mask(mask_gallery, chosen_mask: int, dilation_amt: float, input_image: Image.Image):
     if isinstance(mask_gallery, list):
         mask_image = Image.open(mask_gallery[chosen_mask + 3]['name'])
     else:

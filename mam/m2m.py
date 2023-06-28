@@ -14,6 +14,7 @@ class SamM2M(Module):
 
     def __init__(self):
         super(SamM2M, self).__init__()
+        self.m2m = None
         self.m2m_device = get_device_for("sam")
 
 

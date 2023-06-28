@@ -12,7 +12,6 @@ from .modeling.mask_decoder_hq import MaskDecoderHQ
 from .modeling.image_encoder import ImageEncoderViTHQ
 from segment_anything.modeling import PromptEncoder, Sam, TwoWayTransformer
 from segment_anything import build_sam_vit_h, build_sam_vit_l, build_sam_vit_b
-from ultralytics import YOLO
 
 
 def build_sam_hq_vit_h(checkpoint=None):
@@ -52,7 +51,6 @@ sam_model_registry = {
     "sam_hq_vit_h.pth (SysCV, 2.57GB)"      : build_sam_hq_vit_h,
     "sam_hq_vit_l.pth (SysCV, 1.25GB)"      : build_sam_hq_vit_l,
     "sam_hq_vit_b.pth (SysCV, 379MB)"       : build_sam_hq_vit_b,
-    "FastSAM-x.pt (CASIA-IVA-Lab, 138MB)"   : YOLO,
 }
 
 
