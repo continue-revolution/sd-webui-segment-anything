@@ -73,7 +73,7 @@ def update_mask(mask_gallery, chosen_mask, dilation_amt, input_image):
 
 def load_sam_model(sam_checkpoint):
     model_type = sam_checkpoint.split('.')[0]
-    if 'hq' not in model_type:
+    if 'hq' not in model_type and 'mobile' not in model_type:
         model_type = '_'.join(model_type.split('_')[:-1])
     sam_checkpoint_path = os.path.join(sam_model_dir, sam_checkpoint)
     torch.load = unsafe_torch_load
