@@ -65,15 +65,38 @@ You should know the following before submitting an issue.
 
 ## Installation
 
-Download this extension to `${sd-webui}/extensions` use whatever way you like (git clone or install from UI)
+Download this extension to `${sd-webui}/extensions` via whatever way you like (git clone or install from UI)
 
 Choose one or more of the models below and put them to `${sd-webui}/models/sam` or `${sd-webui-segment-anything}/models/sam` (Choose one, not both. Remove the former folder if you choose to use the latter.). **Do not change model name, otherwise this extension may fail due to a bug inside segment anything.**
 
-Three types of SAM models are available. [vit_h](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth) is 2.56GB, [vit_l](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth) is 1.25GB, [vit_b](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth) is 375MB. I myself tested vit_h on NVIDIA 3090 Ti which is good. If you encounter VRAM problem, you should switch to smaller models.
+We support several variations of segmentation models:
 
-You may also choose to use [SAM-HQ](https://github.com/SysCV/sam-hq). [hq_vit_h](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_h.pth) is 2.57G, [hq_vit_l](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_l.pth) is 1.25G, [hq_vit_b](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_b.pth) is 379M.
+1. [SAM](https://github.com/facebookresearch/segment-anything) from Meta AI.
+    - [2.56GB sam_vit_h](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth)
+    - [1.25GB sam_vit_l](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth)
+    - [375MB sam_vit_b](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth)
+    
+    I myself tested vit_h on NVIDIA 3090 Ti which is good. If you encounter VRAM problem, you should switch to smaller models.
 
-GroundingDINO packages, GroundingDINO models and ControlNet annotator models will be automatically installed the first time you use them.
+2. [SAM-HQ](https://github.com/SysCV/sam-hq) from SysCV.
+    - [2.57GB sam_hq_vit_h](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_h.pth)
+    - [1.25GB sam_hq_vit_l](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_l.pth)
+    - [379MB sam_hq_vit_b](https://huggingface.co/lkeab/hq-sam/resolve/main/sam_hq_vit_b.pth)
+
+3. [MobileSAM](https://github.com/ChaoningZhang/MobileSAM) from Kyung Hee University.
+    - [39MB mobile_sam](https://github.com/ChaoningZhang/MobileSAM/blob/master/weights/mobile_sam.pt)
+
+We plan to (**NOT supported yet**) support some other variations of segmentation models after a major refactor of the codebase:
+
+4. [Matting-Anything](https://github.com/SHI-Labs/Matting-Anything) from SHI-Labs. This is a post-processing model for any variation of SAM. Put the model under `${sd-webui-segment-anything}/models/sam`
+    - [11MB mam](https://huggingface.co/conrevo/SAM4WebUI-Extension-Models/resolve/main/mam.pth)
+
+5. [FastSAM](https://github.com/CASIA-IVA-Lab/FastSAM) from CASIA-IVA-Lab. This is a YOLO variation of SAM.
+    - [145MB FastSAM-x](https://huggingface.co/conrevo/SAM4WebUI-Extension-Models/resolve/main/FastSAM-x.pt)
+
+GroundingDINO packages, GroundingDINO models and ControlNet annotator models will be automatically installed the first time you use them. 
+
+If your network does not allow you to access huggingface via the terminal, download GroundingDINO models from [huggingface](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main) and put them under `${sd-webui-segment-anything}/models/grounding-dino`. Please note that GroundingDINO still need to access huggingface to download bert vocabularies. There is no alternative at this time. Read [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/138) to find a way to resolve this problem. I will try to find an alternative in the near future.
 
 ## GroundingDINO
 
@@ -83,7 +106,7 @@ GroundingDINO has been supported in this extension. It has the following functio
 3. You can go to `Batch Process` tab to do image matting and get LoRA/LyCORIS training set
 
 However, there are some existing problems with GroundingDINO:
-1. GroundingDINO will be install when you firstly use GroundingDINO features, instead of when you initiate the WebUI. Make sure that your terminal can have access to GitHub, otherwise you have to install GroundingDINO manually. GroundingDINO models will be automatically downloaded from [huggingFace](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main). If your terminal cannot visit HuggingFace, please manually download the model and put it under `${sd-webui-sam}/models/grounding-dino`.
+1. GroundingDINO will be install when you firstly use GroundingDINO features, instead of when you initiate the WebUI. Make sure that your terminal can have access to GitHub, otherwise you have to install GroundingDINO manually. GroundingDINO models will be automatically downloaded from [huggingface](https://huggingface.co/ShilongLiu/GroundingDINO/tree/main). If your terminal cannot visit HuggingFace, please manually download the model and put it under `${sd-webui-segment-anything}/models/grounding-dino`.
 2. **If you want to use local groundingdino to bypass ALL the painful C++/CUDA/ninja/pycocotools problems, please read [FAQ](#faq)-1.** GroundingDINO requires your device to compile C++, which might take a long time and throw tons of exceptions. If you encounter `_C` problem, it's most probably because you did not install CUDA Toolkit. Follow steps decribed [here](https://github.com/continue-revolution/sd-webui-segment-anything/issues/32#issuecomment-1513873296). DO NOT skip steps. Otherwise, please go to [Grounded-SAM Issue Page](https://github.com/IDEA-Research/Grounded-Segment-Anything/issues) and submit an issue there. Despite of this, you can still use this extension for point prompts->segmentation masks even if you cannot install GroundingDINO, don't worry.
 3. If you want to use point prompts, SAM can at most accept one bounding box. This extension will check if there are multiple bounding boxes. If multiple bounding boxes, this extension will disgard all point prompts; otherwise all point prompts will be effective. You may always select one bounding box you want.
 
@@ -99,8 +122,9 @@ Automatic Segmentation has been supported in this extension. It has the followin
 
 However, there are some existing problems with AutoSAM:
 1. You are required to install [Mikubill ControlNet Extension](https://github.com/Mikubill/sd-webui-controlnet) to use functionality 1 and 4. Please do not change the directory name (`sd-webui-controlnet`).
-2. You can observe drastic improvement if you combine `seg_ufade20k` and SAM. You may only observe some slight improvement if you combine one of the `Oneformer` preprocessors (`seg_ofade20k`&`seg_ofcoco`). This is because [Oneformer](https://github.com/SHI-Labs/OneFormer) is already very strong, compared to Uniformer, for semantic segmentation. SAM can only improve some details of semantic segmentation instead of showing some categories semantic models cannot show, because SAM is NOT a semantic-recognizable model.
-3. Image layout generation has a pretty bad performance for anime images. I discourage you from using this functionality if you are dealing with anime images. I'm not sure about the performance for real images.
+2. You are required to open WebUI via administrative mode the first time you access this feature if you are using Windows. This is because Windows does not allow visitors to create symbolic links via python.
+3. You can observe drastic improvement if you combine `seg_ufade20k` and SAM. You may only observe some slight improvement if you combine one of the `Oneformer` preprocessors (`seg_ofade20k`&`seg_ofcoco`). This is because [Oneformer](https://github.com/SHI-Labs/OneFormer) is already very strong, compared to Uniformer, for semantic segmentation. SAM can only improve some details of semantic segmentation instead of showing some categories semantic models cannot show, because SAM is NOT a semantic-recognizable model.
+4. Image layout generation has a pretty bad performance for anime images. I discourage you from using this functionality if you are dealing with anime images. I'm not sure about the performance for real images.
 
 ## How to Use
 
