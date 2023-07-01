@@ -7,6 +7,25 @@ from scipy.ndimage import binary_dilation
 from PIL import Image
 
 
+class ModelInfo:
+
+    def __init__(self, model_type: str, url: str, author: str, size: str, download_info: str="auto download"):
+        self.model_type = model_type
+        self.url = url
+        self.author = author
+        self.size = size
+        self.download_info = download_info
+
+
+    def get_info(self, model_name: str):
+        return f"{model_name} ({self.size}, {self.author}, {self.model_type}, {self.download_info})"
+    
+
+    def local_path(self, path: str):
+        self.url = path
+        self.download_info = "downloaded"
+
+
 def show_boxes(image_np: np.ndarray, boxes: np.ndarray, color=(255, 0, 0, 255), thickness=2, show_index=False) -> np.ndarray:
     if boxes is None:
         return image_np

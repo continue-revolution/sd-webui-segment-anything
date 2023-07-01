@@ -7,8 +7,8 @@ import torch
 from modules import shared
 from modules.devices import device, torch_gc
 from scripts.sam_log import logger
-import local_groundingdino
 
+# TODO: support YOLO models
 class Detection:
 
     def __init__(self) -> None:
