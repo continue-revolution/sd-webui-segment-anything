@@ -31,7 +31,12 @@ class SamM2M(Module):
         except:
             mam_url = "https://huggingface.co/conrevo/SAM4WebUI-Extension-Models/resolve/main/mam.pth"
             logger.info(f"Loading mam from url: {mam_url} to path: {ckpt_path}, device: {self.m2m_device}")
-            state_dict = torch.hub.load_state_dict_from_url(mam_url, ckpt_path, self.m2m_device)
+            try:
+                state_dict = torch.hub.load_state_dict_from_url(mam_url, ckpt_path, self.m2m_device)
+            except:
+                error_msg = f"Unable to connect to {mam_url}, thus unable to download Matting-Anything model."
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
         self.m2m.load_state_dict(state_dict)
         self.m2m.eval()
 
@@ -39,6 +44,7 @@ class SamM2M(Module):
     def forward(self, features: torch.Tensor, image: torch.Tensor, 
                 low_res_masks: torch.Tensor, masks: torch.Tensor, 
                 ori_shape: torch.Tensor, pad_shape: torch.Tensor, guidance_mode: str):
+        logger.info("Applying Matting-Anything.")
         self.m2m.to(self.m2m_device)
         pred = self.m2m(features, image, low_res_masks)
         alpha_pred_os1, alpha_pred_os4, alpha_pred_os8 = pred['alpha_os1'], pred['alpha_os4'], pred['alpha_os8']
