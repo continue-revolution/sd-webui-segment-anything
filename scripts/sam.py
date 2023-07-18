@@ -259,6 +259,10 @@ def dino_batch_process(
     print("Start batch processing")
     sam = init_sam_model(batch_sam_model_name)
     predictor = SamPredictorHQ(sam, 'hq' in batch_sam_model_name)
+
+    if not os.path.exists(dino_batch_dest_dir):
+        os.makedirs(dino_batch_dest_dir)
+        print(f"Destination directory created: {dino_batch_dest_dir}")
     
     process_info = ""
     install_success = True
