@@ -1,4 +1,7 @@
 import os
+import random
+import string
+import threading
 from fastapi import FastAPI, Body
 from pydantic import BaseModel
 from typing import Any, Optional, List
@@ -9,7 +12,20 @@ import numpy as np
 from modules.api.api import encode_pil_to_base64, decode_base64_to_image
 from scripts.sam import sam_predict, dino_predict, update_mask, cnet_seg, categorical_mask
 from scripts.sam import sam_model_list
+from modules import progress
+from modules.call_queue import QueueLock
 
+task_results = {}
+
+def save_task_result(task_id, result):
+    task_results[task_id] = result
+    if len(task_results) > 10:
+        task_results.pop(0)
+
+def get_task_result(task_id):
+    if task_id in task_results:
+        return task_results[task_id]
+    return None
 
 def decode_to_pil(image):
     if os.path.exists(image):
@@ -60,29 +76,50 @@ def sam_api(_: gr.Blocks, app: FastAPI):
         dino_preview_boxes_selection: Optional[List[int]] = None
 
     @app.post("/sam/sam-predict")
-    async def api_sam_predict(payload: SamPredictRequest = Body(...)) -> Any:
-        print(f"SAM API /sam/sam-predict received request")
-        payload.input_image = decode_to_pil(payload.input_image).convert('RGBA')
-        sam_output_mask_gallery, sam_message = sam_predict(
-            payload.sam_model_name,
-            payload.input_image,
-            payload.sam_positive_points,
-            payload.sam_negative_points,
-            payload.dino_enabled,
-            payload.dino_model_name,
-            payload.dino_text_prompt,
-            payload.dino_box_threshold,
-            payload.dino_preview_checkbox,
-            payload.dino_preview_boxes_selection)
-        print(f"SAM API /sam/sam-predict finished with message: {sam_message}")
-        result = {
-            "msg": sam_message,
-        }
-        if len(sam_output_mask_gallery) == 9:
-            result["blended_images"] = list(map(encode_to_base64, sam_output_mask_gallery[:3]))
-            result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[3:6]))
-            result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[6:]))
+    def api_sam_predict(payload: SamPredictRequest = Body(...)) -> Any:
+        print(f"SAM API /sam/sam-predict received post request")
+        task_id = ''.join(random.choice(string.ascii_letters) for i in range(10))
+        task_id = f'task({task_id})'
+        response = {"message": "Job created successfully",
+                    'task_id': task_id}
+        thread = threading.Thread(target=do_sam_predict, args=(payload, task_id))
+        thread.start()
+        return response
+
+    def do_sam_predict(payload: SamPredictRequest, task_id: str):
+        progress.add_task_to_queue(task_id)
+        with QueueLock(name=task_id):
+            progress.start_task(task_id)
+            payload.input_image = decode_to_pil(payload.input_image).convert('RGBA')
+            sam_output_mask_gallery, sam_message = sam_predict(
+                payload.sam_model_name,
+                payload.input_image,
+                payload.sam_positive_points,
+                payload.sam_negative_points,
+                payload.dino_enabled,
+                payload.dino_model_name,
+                payload.dino_text_prompt,
+                payload.dino_box_threshold,
+                payload.dino_preview_checkbox,
+                payload.dino_preview_boxes_selection)
+            result = {
+                "msg": sam_message,
+            }
+            if len(sam_output_mask_gallery) == 9:
+                result["masks"] = encode_to_base64(sam_output_mask_gallery[4])
+                result["masked_images"] = encode_to_base64(sam_output_mask_gallery[7])
+            save_task_result(task_id, result)
+            progress.finish_task(task_id)
         return result
+
+    @app.get("/sam/sam-predict")
+    def get_sam_predict(task_id: str) -> Any:
+        ret = progress.get_task_info(task_id)
+        response = {
+            "status": "completed" if  ret["completed"] else "processing" if ret["active"] else "waiting",
+            'result': get_task_result(task_id),
+        }
+        return response
 
     class DINOPredictRequest(BaseModel):
         input_image: str
