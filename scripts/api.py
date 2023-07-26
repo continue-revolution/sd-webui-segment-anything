@@ -106,8 +106,8 @@ def sam_api(_: gr.Blocks, app: FastAPI):
                 "msg": sam_message,
             }
             if len(sam_output_mask_gallery) == 9:
-                result["masks"] = encode_to_base64(sam_output_mask_gallery[4])
-                result["masked_images"] = encode_to_base64(sam_output_mask_gallery[7])
+                result["mask"] = encode_to_base64(sam_output_mask_gallery[4])
+                result["masked_image"] = encode_to_base64(sam_output_mask_gallery[7])
             save_task_result(task_id, result)
             progress.finish_task(task_id)
         return result
