@@ -20,7 +20,7 @@ task_results = {}
 def save_task_result(task_id, result):
     task_results[task_id] = result
     if len(task_results) > 10:
-        task_results.pop(0)
+        task_results.pop(list(task_results.keys())[0])
 
 def get_task_result(task_id):
     if task_id in task_results:
