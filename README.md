@@ -128,7 +128,7 @@ However, there are some existing problems with AutoSAM:
 
 ## How to Use
 
-If you have previously enabled other copys while using this extension, you may want to click `Uncheck all copies` at the bottom of this extension UI, to prevent other copies from affecting your current page.
+If you have previously enabled other copies while using this extension, you may want to click `Uncheck all copies` at the bottom of this extension UI, to prevent other copies from affecting your current page.
 
 ### Single Image
 1. Upload your image
