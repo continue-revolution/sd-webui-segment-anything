@@ -19,7 +19,7 @@ task_results = {}
 
 def save_task_result(task_id, result):
     task_results[task_id] = result
-    if len(task_results) > 10:
+    if len(task_results) > 5:
         task_results.pop(list(task_results.keys())[0])
 
 def get_task_result(task_id):
@@ -106,8 +106,8 @@ def sam_api(_: gr.Blocks, app: FastAPI):
                 "msg": sam_message,
             }
             if len(sam_output_mask_gallery) == 9:
-                result["mask"] = encode_to_base64(sam_output_mask_gallery[4])
-                result["masked_image"] = encode_to_base64(sam_output_mask_gallery[7])
+                result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[3:6]))
+                result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[6:]))
             save_task_result(task_id, result)
             progress.finish_task(task_id)
         return result
