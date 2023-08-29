@@ -44,6 +44,9 @@ def encode_to_base64(image):
     if type(image) is str:
         return image
     elif type(image) is Image.Image:
+        if image.mode == "RGBA":
+            rgb_image = image.convert("RGB")
+            return encode_pil_to_base64(rgb_image).decode()
         return encode_pil_to_base64(image).decode()
     elif type(image) is np.ndarray:
         pil = Image.fromarray(image)
