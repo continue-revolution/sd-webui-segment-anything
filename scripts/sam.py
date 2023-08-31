@@ -464,7 +464,7 @@ def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image
     sam_dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")
     with gr.Column(visible=False) as dilation_column:
         sam_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)")
-        sam_dilation_output_gallery = gr.Gallery(label="Expanded Mask").style(grid=3)
+        sam_dilation_output_gallery = gr.Gallery(label="Expanded Mask", columns=3)
         sam_dilation_submit = gr.Button(value="Update Mask")
         sam_dilation_submit.click(
             fn=update_mask,
@@ -601,7 +601,7 @@ class Script(scripts.Script):
                         inputs=[dino_checkbox],
                         outputs=[dino_column],
                         show_progress=False)
-                    sam_output_mask_gallery = gr.Gallery(label='Segment Anything Output').style(grid=3)
+                    sam_output_mask_gallery = gr.Gallery(label='Segment Anything Output', columns=3)
                     sam_submit = gr.Button(value="Preview Segmentation", elem_id=f"{tab_prefix}run_button")
                     sam_result = gr.Text(value="", label="Segment Anything status")
                     sam_submit.click(
@@ -668,7 +668,7 @@ class Script(scripts.Script):
                                 "You can also utilize [Edit-Anything](https://github.com/sail-sg/EditAnything) and generate images according to random segmentation which preserve image layout.")
                             cnet_seg_processor, cnet_seg_processor_res, cnet_seg_gallery_input, cnet_seg_pixel_perfect, cnet_seg_resize_mode = ui_processor(use_cnet=(max_cn_num() > 0))
                             cnet_seg_input_image = gr.Image(label="Image for Auto Segmentation", source="upload", type="pil", image_mode="RGBA")
-                            cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output").style(grid=2)
+                            cnet_seg_output_gallery = gr.Gallery(label="Auto segmentation output", columns=2)
                             cnet_seg_submit = gr.Button(value="Preview segmentation image")
                             cnet_seg_status = gr.Text(value="", label="Segmentation status")
                             cnet_seg_submit.click(
@@ -716,7 +716,7 @@ class Script(scripts.Script):
                             with gr.Tabs():
                                 with gr.TabItem(label="Single Image"):
                                     crop_input_image = gr.Image(label="Image to be masked", source="upload", type="pil", image_mode="RGBA")
-                                    crop_output_gallery = gr.Gallery(label="Output").style(grid=3)
+                                    crop_output_gallery = gr.Gallery(label="Output", columns=3)
                                     crop_padding = gr.Number(value=-2, visible=False, interactive=False, precision=0)
                                     crop_resized_image = gr.Image(label="Resized image", source="upload", type="pil", image_mode="RGBA", visible=False)
                                     crop_submit = gr.Button(value="Preview mask")
