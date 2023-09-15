@@ -242,8 +242,8 @@ Give me a star if you like this extension!
 
 ## Sponsor
 
-You can sponsor me via WeChat or Alipay.
+You can sponsor me via WeChat, AliPay or Paypal.
 
-| WeChat | Alipay |
-| --- | --- |
-| ![216aff0250c7fd2bb32eeb4f7aae623](https://user-images.githubusercontent.com/63914308/232824466-21051be9-76ce-4862-bb0d-a431c186fce1.jpg) | ![15fe95b4ada738acf3e44c1d45a1805](https://user-images.githubusercontent.com/63914308/232824545-fb108600-729d-4204-8bec-4fd5cc8a14ec.jpg) |
+| WeChat | AliPay | Paypal |
+| --- | --- | --- |
+| ![216aff0250c7fd2bb32eeb4f7aae623](https://user-images.githubusercontent.com/63914308/232824466-21051be9-76ce-4862-bb0d-a431c186fce1.jpg) | ![15fe95b4ada738acf3e44c1d45a1805](https://user-images.githubusercontent.com/63914308/232824545-fb108600-729d-4204-8bec-4fd5cc8a14ec.jpg) | ![IMG_1419_](https://github.com/continue-revolution/sd-webui-segment-anything/assets/63914308/0261a575-a43e-4dd1-98a6-0cfe8a3af78e) |
