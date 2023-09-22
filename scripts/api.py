@@ -10,7 +10,7 @@ from PIL import Image
 import numpy as np
 
 from modules.api.api import encode_pil_to_base64, decode_base64_to_image
-from scripts.sam import sam_predict, dino_predict, update_mask, cnet_seg, categorical_mask
+from scripts.sam import fashion_segment, sam_predict, dino_predict, update_mask, cnet_seg, categorical_mask
 from scripts.sam import sam_model_list
 from modules import progress
 from modules.call_queue import QueueLock
@@ -123,6 +123,54 @@ def sam_api(_: gr.Blocks, app: FastAPI):
             'result': get_task_result(task_id),
         }
         return response
+
+    @app.post("/sam/fashion-segment")
+    def api_sam_predict(payload: SamPredictRequest = Body(...)) -> Any:
+        print(f"SAM API /sam/fashion-segment received post request")
+        task_id = ''.join(random.choice(string.ascii_letters) for i in range(10))
+        task_id = f'task({task_id})'
+        response = {"message": "Job created successfully",
+                    'task_id': task_id}
+        thread = threading.Thread(target=do_fashion_segment, args=(payload, task_id))
+        thread.start()
+        return response
+
+    @app.get("/sam/fashion-segment")
+    def get_fashion_segment(task_id: str) -> Any:
+        ret = progress.get_task_info(task_id)
+        response = {
+            "status": "completed" if  ret["completed"] else "processing" if ret["active"] else "waiting",
+            'result': get_task_result(task_id),
+        }
+        return response
+
+    def do_fashion_segment(payload: SamPredictRequest, task_id: str):
+        progress.add_task_to_queue(task_id)
+        with QueueLock(name=task_id):
+            progress.start_task(task_id)
+            payload.input_image = decode_to_pil(payload.input_image).convert('RGBA')
+            sam_output_mask_gallery, annotations, sam_message = fashion_segment(
+                payload.sam_model_name,
+                payload.input_image,
+                payload.sam_positive_points,
+                payload.sam_negative_points,
+                payload.dino_enabled,
+                payload.dino_model_name,
+                payload.dino_text_prompt,
+                payload.dino_box_threshold,
+                payload.dino_preview_checkbox,
+                payload.dino_preview_boxes_selection)
+            result = {
+                "msg": sam_message,
+            }
+            if len(sam_output_mask_gallery) == 6:
+                result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[2:4]))
+                result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[4:]))
+                result["anotations"] = annotations
+            save_task_result(task_id, result)
+            progress.finish_task(task_id)
+        return result
+
 
     class DINOPredictRequest(BaseModel):
         input_image: str
