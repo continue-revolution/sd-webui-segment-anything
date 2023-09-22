@@ -166,7 +166,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
             if len(sam_output_mask_gallery) == 6:
                 result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[2:4]))
                 result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[4:]))
-                result["anotations"] = annotations
+                result["annotations"] = annotations
             save_task_result(task_id, result)
             progress.finish_task(task_id)
         return result
