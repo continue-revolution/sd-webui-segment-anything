@@ -256,6 +256,8 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
     predictor = SamPredictorHQ(sam, 'hq' in sam_model_name)
     predictor.set_image(image_np_rgb)
     prompts = ["dress,accessories", "dress,model,accessories"]
+    if text_prompt:
+        prompts = text_prompt.split("&")
     mask_result = []
     for prompt in prompts:
         if dino_enabled:
@@ -273,9 +275,9 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
                 point_coords=None,
                 point_labels=None,
                 boxes=transformed_boxes.to(sam_device),
-                multimask_output=False)
+                multimask_output=True)
             masks = masks.permute(1, 0, 2, 3).cpu().numpy()
-            mask_result.append(masks[0])
+            mask_result.append(masks[1])
         else:
             num_box = 0 if boxes_filt is None else boxes_filt.shape[0]
             num_points = len(positive_points) + len(negative_points)
@@ -295,9 +297,7 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
                 box=box,
                 multimask_output=True)
             masks = masks[:, None, ...]
-            print("masks len", len(masks[0]))
-            print("masks type", type(masks[0]))
-            mask_result.append(masks[0])
+            mask_result.append(masks[1])
 
     _sam = SamAutomaticMaskGeneratorHQ(predictor, output_mode="uncompressed_rle")
     annotations = _sam.generate(image_np_rgb)
