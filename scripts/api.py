@@ -12,20 +12,9 @@ import numpy as np
 from modules.api.api import encode_pil_to_base64, decode_base64_to_image
 from scripts.sam import fashion_segment, sam_predict, dino_predict, update_mask, cnet_seg, categorical_mask
 from scripts.sam import sam_model_list
-from modules import progress
-from modules.call_queue import QueueLock
+from sam_hq import progress
+from sam_hq.progress import QueueLock
 
-task_results = {}
-
-def save_task_result(task_id, result):
-    task_results[task_id] = result
-    if len(task_results) > 5:
-        task_results.pop(list(task_results.keys())[0])
-
-def get_task_result(task_id):
-    if task_id in task_results:
-        return task_results[task_id]
-    return None
 
 def decode_to_pil(image):
     if os.path.exists(image):
@@ -111,7 +100,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
             if len(sam_output_mask_gallery) == 9:
                 result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[3:6]))
                 result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[6:]))
-            save_task_result(task_id, result)
+            progress.save_task_result(task_id, result)
             progress.finish_task(task_id)
         return result
 
@@ -120,7 +109,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
         ret = progress.get_task_info(task_id)
         response = {
             "status": "completed" if  ret["completed"] else "processing" if ret["active"] else "waiting",
-            'result': get_task_result(task_id),
+            'result': progress.get_task_result(task_id),
         }
         return response
 
@@ -140,8 +129,11 @@ def sam_api(_: gr.Blocks, app: FastAPI):
         ret = progress.get_task_info(task_id)
         response = {
             "status": "completed" if  ret["completed"] else "processing" if ret["active"] else "waiting",
-            'result': get_task_result(task_id),
+            "result": progress.get_task_result(task_id),
         }
+
+        if ret['queued']:
+            response["textinfo"] = f"In queue... {ret['queue_pos'] + 1}/{ret['queue_len']} request(s) remaining until yours" if ret['queue_pos'] >= 0 else "Waiting..."
         return response
 
     def do_fashion_segment(payload: SamPredictRequest, task_id: str):
@@ -168,7 +160,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
                 result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[round_num:2*round_num]))
                 result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[2*round_num:]))
                 result["annotations"] = annotations
-            save_task_result(task_id, result)
+            progress.save_task_result(task_id, result)
             progress.finish_task(task_id)
         return result
 
