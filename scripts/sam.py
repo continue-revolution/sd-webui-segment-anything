@@ -299,7 +299,7 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
             masks = masks[:, None, ...]
             mask_result.append(masks[1])
 
-    _sam = SamAutomaticMaskGeneratorHQ(predictor, output_mode="uncompressed_rle")
+    _sam = SamAutomaticMaskGeneratorHQ(predictor, output_mode="uncompressed_rle", stability_score_offset=0.5)
     annotations = _sam.generate(image_np_rgb)
     print("annotations len", len(annotations))
 
