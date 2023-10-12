@@ -141,7 +141,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
         with QueueLock(name=task_id):
             progress.start_task(task_id)
             payload.input_image = decode_to_pil(payload.input_image).convert('RGBA')
-            sam_output_mask_gallery, annotations, sam_message = fashion_segment(
+            sam_output_mask_gallery, infos, annotations, sam_message = fashion_segment(
                 payload.sam_model_name,
                 payload.input_image,
                 payload.sam_positive_points,
@@ -154,12 +154,13 @@ def sam_api(_: gr.Blocks, app: FastAPI):
                 payload.dino_preview_boxes_selection)
             result = {
                 "msg": sam_message,
+                "infos": infos,
+                "annotations": annotations,
             }
             round_num = len(sam_output_mask_gallery) // 3
             if round_num > 0:
                 result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[round_num:2*round_num]))
                 result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[2*round_num:]))
-                result["annotations"] = annotations
             progress.save_task_result(task_id, result)
             progress.finish_task(task_id)
         return result

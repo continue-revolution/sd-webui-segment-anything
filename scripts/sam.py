@@ -244,22 +244,24 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
                 dino_preview_checkbox, dino_preview_boxes_selection):
     print("Start SAM Processing")
     if sam_model_name is None:
-        return [], "SAM model not found. Please download SAM model from extension README."
+        return [], None, None, "SAM model not found. Please download SAM model from extension README."
     if input_image is None:
-        return [], "SAM requires an input image. Please upload an image first."
+        return [], None, None, "SAM requires an input image. Please upload an image first."
     image_np = np.array(input_image)
     image_np_rgb = image_np[..., :3]
     dino_enabled = dino_checkbox and text_prompt is not None
     boxes_filt = None
-    sam_predict_result = " done."
     sam = init_sam_model(sam_model_name)
     predictor = SamPredictorHQ(sam, 'hq' in sam_model_name)
     predictor.set_image(image_np_rgb)
-    prompts = ["dress,accessories", "dress,model,accessories"]
+    prompts = []
     if text_prompt:
         prompts = text_prompt.split("&")
     mask_result = []
+    infos = []
     for prompt in prompts:
+        info = {}
+        info["prompt"] = prompt
         if dino_enabled:
             boxes_filt, install_success = dino_predict_internal(input_image, dino_model_name, prompt, box_threshold)
             if dino_preview_checkbox is not None and dino_preview_checkbox and dino_preview_boxes_selection is not None:
@@ -268,8 +270,7 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
         print(f"Running SAM Inference {image_np_rgb.shape}")
 
         if dino_enabled and boxes_filt.shape[0] > 1:
-            sam_predict_status = f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts discarded"
-            print(sam_predict_status)
+            info["message"] = f"SAM inference with {boxes_filt.shape[0]} boxes, point prompts discarded"
             transformed_boxes = predictor.transform.apply_boxes_torch(boxes_filt, image_np.shape[:2])
             masks, _, _ = predictor.predict_torch(
                 point_coords=None,
@@ -277,17 +278,24 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
                 boxes=transformed_boxes.to(sam_device),
                 multimask_output=True)
             masks = masks.permute(1, 0, 2, 3).cpu().numpy()
-            mask_result.append(masks[1])
+            if len(masks) >= 2:
+                mask_result.append(masks[1])
+                info["success"] = True
+            else:
+                info["success"] = False
         else:
             num_box = 0 if boxes_filt is None else boxes_filt.shape[0]
             num_points = len(positive_points) + len(negative_points)
             if num_box == 0 and num_points == 0:
                 garbage_collect(sam)
                 if dino_enabled and dino_preview_checkbox and num_box == 0:
-                    return [], "It seems that you are using a high box threshold with no point prompts. Please lower your box threshold and re-try."
-                return [], "You neither added point prompts nor enabled GroundingDINO. Segmentation cannot be generated."
-            sam_predict_status = f"SAM inference with {num_box} box, {len(positive_points)} positive prompts, {len(negative_points)} negative prompts"
-            print(sam_predict_status)
+                    info["message"] = "It seems that you are using a high box threshold with no point prompts. Please lower your box threshold and re-try."
+                else:
+                    info["message"] = "You neither added point prompts nor enabled GroundingDINO. Segmentation cannot be generated."
+                info["success"] = False
+                infos.append(info)
+                continue
+            info["message"] = f"SAM inference with {num_box} box, {len(positive_points)} positive prompts, {len(negative_points)} negative prompts"
             point_coords = np.array(positive_points + negative_points)
             point_labels = np.array([1] * len(positive_points) + [0] * len(negative_points))
             box = copy.deepcopy(boxes_filt[0].numpy()) if boxes_filt is not None and boxes_filt.shape[0] > 0 else None
@@ -297,14 +305,18 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
                 box=box,
                 multimask_output=True)
             masks = masks[:, None, ...]
-            mask_result.append(masks[1])
+            if len(masks) >= 2:
+                mask_result.append(masks[1])
+                info["success"] = True
+            else:
+                info["success"] = False
+        infos.append(info)
 
     _sam = SamAutomaticMaskGeneratorHQ(predictor, output_mode="uncompressed_rle", stability_score_offset=0.5)
     annotations = _sam.generate(image_np_rgb)
-    print("annotations len", len(annotations))
 
     garbage_collect(sam)
-    return create_mask_output(image_np, mask_result, boxes_filt), annotations, sam_predict_status + sam_predict_result + (f" However, GroundingDINO installment has failed. Your process automatically fall back to local groundingdino. Check your terminal for more detail and {dino_install_issue_text}." if (dino_enabled and not install_success) else "")
+    return create_mask_output(image_np, mask_result, boxes_filt), infos, annotations, "Success"
 
 
 
