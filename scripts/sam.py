@@ -174,7 +174,8 @@ def create_mask_output_fashion(image_np, masks, boxes_filt):
     boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
     index = 0
     for mask in masks:
-        dilate_pixel = -2 if index == 0 else -4 if index == 1 else 0 
+        dilate_pixel = -2 if index == 0 else -4 if index == 1 else 0
+        print(f"index: {index}, dilate_pixel: {dilate_pixel}")
         index += 1
         if dilate_pixel != 0:
             d,w,h = mask.shape
