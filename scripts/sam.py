@@ -157,6 +157,42 @@ def create_mask_output(image_np, masks, boxes_filt):
     return mask_images + masks_gallery + matted_images
 
 
+def border_adjust(mask, number_pixel):
+    import cv2
+    kernel_size = abs(number_pixel)
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    if number_pixel < 0:
+        mask = cv2.erode(mask, kernel)
+    else:
+        mask = cv2.dilate(mask, kernel)
+    return mask
+
+
+def create_mask_output_fashion(image_np, masks, boxes_filt):
+    print("Creating fashion output image")
+    mask_images, masks_gallery, matted_images = [], [], []
+    boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
+    index = 0
+    for mask in masks:
+        dilate_pixel = -2 if index == 0 else -4 if index == 1 else 0 
+        index += 1
+        if dilate_pixel != 0:
+            d,w,h = mask.shape
+            if d > 1:
+                mask = np.logical_or.reduce(mask)
+            mask = mask.reshape((w,h))
+            mask = mask.astype(np.uint8)*255
+            mask = border_adjust(mask, dilate_pixel)
+            mask = (mask > 0).astype(bool)
+            mask = mask.reshape((1,w,h))
+        masks_gallery.append(Image.fromarray(np.any(mask, axis=0)))
+        blended_image = show_masks(show_boxes(image_np, boxes_filt), mask)
+        mask_images.append(Image.fromarray(blended_image))
+        image_np_copy = copy.deepcopy(image_np)
+        image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+        matted_images.append(Image.fromarray(image_np_copy))
+    return mask_images + masks_gallery + matted_images
+
 def create_mask_batch_output(
     input_image_file, dino_batch_dest_dir, 
     image_np, masks, boxes_filt, batch_dilation_amt, 
@@ -316,7 +352,7 @@ def fashion_segment(sam_model_name, input_image, positive_points, negative_point
     annotations = _sam.generate(image_np_rgb)
 
     garbage_collect(sam)
-    return create_mask_output(image_np, mask_result, boxes_filt), infos, annotations, "Success"
+    return create_mask_output_fashion(image_np, mask_result, boxes_filt), infos, annotations, "Success"
 
 
 
