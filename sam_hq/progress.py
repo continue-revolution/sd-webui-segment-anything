@@ -1,20 +1,7 @@
 
 import time
 from modules.priority_lock import PriorityLock
-queue_lock = PriorityLock("Segment")
-
-class QueueLock:
-    def __init__(self, pri=100, name=None):
-        self._priority = pri
-        self._name = name
-
-    def __enter__(self):
-        queue_lock.acquire(self._priority, self._name)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        queue_lock.release()
-
+segment_queue_lock = PriorityLock("Segment")
 
 current_task = None
 pending_tasks = {}
@@ -61,7 +48,7 @@ def get_task_info(task_id):
     completed = task_id in finished_tasks
     pos, total = None, None
     if not active:
-        pos, total = queue_lock.get_task_position(task_id)
+        pos, total = segment_queue_lock.get_task_position(task_id)
     ret = {}
     ret['active'] = active
     ret['queued'] = queued

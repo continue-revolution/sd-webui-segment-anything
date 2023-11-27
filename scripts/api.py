@@ -13,7 +13,8 @@ from modules.api.api import encode_pil_to_base64, decode_base64_to_image
 from scripts.sam import fashion_segment, sam_predict, dino_predict, update_mask, cnet_seg, categorical_mask
 from scripts.sam import sam_model_list
 from sam_hq import progress
-from sam_hq.progress import QueueLock
+from sam_hq.progress import segment_queue_lock
+from modules.queue_lock import QueueLock
 
 
 def decode_to_pil(image):
@@ -77,7 +78,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
 
     def do_sam_predict(payload: SamPredictRequest, task_id: str):
         progress.add_task_to_queue(task_id)
-        with QueueLock(name=task_id):
+        with QueueLock(segment_queue_lock, name=task_id):
             progress.start_task(task_id)
             payload.input_image = decode_to_pil(payload.input_image).convert('RGBA')
             sam_output_mask_gallery, sam_message = sam_predict(
@@ -135,7 +136,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
 
     def do_fashion_segment(payload: SamPredictRequest, task_id: str):
         progress.add_task_to_queue(task_id)
-        with QueueLock(name=task_id):
+        with QueueLock(segment_queue_lock, name=task_id):
             progress.start_task(task_id)
             payload.input_image = decode_to_pil(payload.input_image).convert('RGBA')
             sam_output_mask_gallery, infos, annotations, sam_message = fashion_segment(
