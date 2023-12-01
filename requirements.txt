@@ -1,3 +1,6 @@
 segment_anything
 supervision
+pymatting
+scipy
+Pillow
 git+https://github.com/IDEA-Research/GroundingDINO
