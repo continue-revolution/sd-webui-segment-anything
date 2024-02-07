@@ -64,7 +64,7 @@ def _load_sam_checkpoint(sam: Sam, checkpoint=None):
     sam.eval()
     if checkpoint is not None:
         with open(checkpoint, "rb") as f:
-            state_dict = torch.load(f)
+            state_dict = torch.load(f, map_location="cpu")
         info = sam.load_state_dict(state_dict, strict=False)
         print(info)
     for _, p in sam.named_parameters():
