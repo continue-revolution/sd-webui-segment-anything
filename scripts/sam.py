@@ -463,7 +463,7 @@ def ui_sketch(sam_input_image, is_img2img):
 def ui_dilation(sam_output_mask_gallery, sam_output_chosen_mask, sam_input_image):
     sam_dilation_checkbox = gr.Checkbox(value=False, label="Expand Mask")
     with gr.Column(visible=False) as dilation_column:
-        sam_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)")
+        sam_dilation_amt = gr.Slider(minimum=0, maximum=100, value=0, label="Specify the amount that you wish to expand the mask by (recommend 30)")
         sam_dilation_output_gallery = gr.Gallery(label="Expanded Mask", columns=3)
         sam_dilation_submit = gr.Button(value="Update Mask")
         sam_dilation_submit.click(
@@ -491,7 +491,7 @@ def ui_inpaint(is_img2img, max_cn):
 
 
 def ui_batch(is_dino):
-    dino_batch_dilation_amt = gr.Slider(minimum=0, maximum=100, default=0, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)")
+    dino_batch_dilation_amt = gr.Slider(minimum=0, maximum=100, value=0, label="Specify the amount that you wish to expand the mask by (recommend 0-10)")
     dino_batch_source_dir = gr.Textbox(label="Source directory")
     dino_batch_dest_dir = gr.Textbox(label="Destination directory")
     with gr.Row():
@@ -777,8 +777,8 @@ class Script(scripts.Script):
                         inputs=[],
                         outputs=[])
                     uncheck.click(
-                        fn=lambda _: (gr.update(value=False), gr.update(value=False), gr.update(value=False)),
-                        inputs=None,
+                        fn=lambda: (gr.update(value=False), gr.update(value=False), gr.update(value=False)),
+                        inputs=[],
                         outputs=[sam_inpaint_upload_enable, cnet_seg_enable_copy, crop_inpaint_enable],
                         show_progress=False)
         
