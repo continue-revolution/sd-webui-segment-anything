@@ -63,7 +63,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
     async def api_sam_predict(payload: SamPredictRequest = Body(...)) -> Any:
         print(f"SAM API /sam/sam-predict received request")
         payload.input_image = decode_to_pil(payload.input_image).convert('RGBA')
-        sam_output_mask_gallery, sam_message = sam_predict(
+        sam_output_mask_gallery, sam_message, boxes_filt = sam_predict(
             payload.sam_model_name,
             payload.input_image,
             payload.sam_positive_points,
@@ -82,6 +82,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
             result["blended_images"] = list(map(encode_to_base64, sam_output_mask_gallery[:3]))
             result["masks"] = list(map(encode_to_base64, sam_output_mask_gallery[3:6]))
             result["masked_images"] = list(map(encode_to_base64, sam_output_mask_gallery[6:]))
+            result["boxes"] = boxes_filt.int().tolist()
         return result
 
     class DINOPredictRequest(BaseModel):
@@ -94,7 +95,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
     async def api_dino_predict(payload: DINOPredictRequest = Body(...)) -> Any:
         print(f"SAM API /sam/dino-predict received request")
         payload.input_image = decode_to_pil(payload.input_image)
-        dino_output_img, _, dino_msg = dino_predict(
+        dino_output_img, _, dino_msg, boxes_filt = dino_predict(
             payload.input_image,
             payload.dino_model_name,
             payload.text_prompt,
@@ -107,6 +108,7 @@ def sam_api(_: gr.Blocks, app: FastAPI):
         return {
             "msg": dino_msg,
             "image_with_box": encode_to_base64(dino_output_img) if dino_output_img is not None else None,
+            "boxes": boxes_filt.int().tolist() if boxes_filt is not None else None
         }
 
     class DilateMaskRequest(BaseModel):
